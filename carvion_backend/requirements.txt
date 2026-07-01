@@ -1,0 +1,17 @@
+django>=4.2,<5.0
+djangorestframework>=3.14.0
+mongoengine>=0.27.0
+pymongo>=4.3.3
+django-cors-headers>=4.0.0
+django-environ>=0.10.0
+django-ratelimit>=4.1.0
+pyjwt>=2.7.0
+cryptography>=41.0.0
+requests>=2.31.0
+pymupdf>=1.22.0
+python-docx>=0.8.11
+weasyprint>=59.0
+spacy>=3.5.0
+scikit-learn>=1.2.0
+google-genai>=2.10.0
+gunicorn>=20.1.0
