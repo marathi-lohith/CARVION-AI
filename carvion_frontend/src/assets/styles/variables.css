@@ -1,0 +1,34 @@
+/* variables.css */
+:root {
+  /* Color Palette - Premium Theme */
+  --primary-color: #f97316;       /* Tailwind Orange-500 */
+  --primary-hover: #ea580c;       /* Tailwind Orange-600 */
+  --primary-light: #ffedd5;       /* Tailwind Orange-100 */
+  --primary-dark: #7c2d12;        /* Tailwind Orange-900 */
+  
+  --secondary-color: #f59e0b;     /* Tailwind Amber-500 */
+  --secondary-hover: #d97706;     /* Tailwind Amber-600 */
+
+  /* Text Colors */
+  --text-dark-primary: #0f172a;   /* Slate-900 */
+  --text-dark-secondary: #334155; /* Slate-700 */
+  --text-dark-muted: #64748b;     /* Slate-500 */
+
+  --text-light-primary: #f8fafc;  /* Slate-50 */
+  --text-light-secondary: #cbd5e1;/* Slate-300 */
+  --text-light-muted: #94a3b8;    /* Slate-400 */
+
+  /* Surface / Backgrounds */
+  --bg-dark-workspace: #1a2238;   
+  --bg-dark-card: #273449;        
+  --bg-dark-header: #161f2f;      
+  
+  --bg-light-workspace: #f8fafc;  
+  --bg-light-card: #ffffff;       
+  --bg-light-header: #ffffff;     
+
+  /* Timing & Transitions */
+  --transition-normal: 200ms ease;
+  --transition-slow: 350ms ease;
+  --transition-fast: 120ms ease;
+}

@@ -18,14 +18,14 @@ def get_or_create_session(user, session_id=None) -> ChatSession:
     if session_id:
         try:
             if ObjectId.is_valid(session_id):
-                session = ChatSession.objects(id=session_id, user=user).first()
+                session = ChatSession.objects(id=session_id, user=user, is_deleted=False).first()
                 if session:
                     return session
         except Exception as e:
             logger.warning(f"Error finding session by id {session_id}: {e}")
 
     # Fallback to the user's latest session, or create one if none exists
-    session = ChatSession.objects(user=user).order_by("-updated_at").first()
+    session = ChatSession.objects(user=user, is_deleted=False).order_by("-updated_at").first()
     if not session:
         session = ChatSession(user=user)
         session.save()
@@ -104,7 +104,7 @@ def send_message_view(request):
 @permission_classes([IsAuthenticated])
 def list_sessions_view(request):
     """GET: List all chat sessions for the authenticated user."""
-    sessions = ChatSession.objects(user=request.user).order_by("-updated_at")
+    sessions = ChatSession.objects(user=request.user, is_deleted=False).order_by("-updated_at")
     serializer = ChatSessionSerializer(sessions, many=True)
     return Response({
         "success": True,
@@ -133,7 +133,7 @@ def rename_session_view(request, session_id):
     try:
         if not ObjectId.is_valid(session_id):
             raise BadRequest("Invalid session ID.")
-        session = ChatSession.objects(id=session_id, user=request.user).first()
+        session = ChatSession.objects(id=session_id, user=request.user, is_deleted=False).first()
         if not session:
             raise NotFound("Chat session not found.")
         
@@ -164,11 +164,12 @@ def delete_session_view(request, session_id):
     try:
         if not ObjectId.is_valid(session_id):
             raise BadRequest("Invalid session ID.")
-        session = ChatSession.objects(id=session_id, user=request.user).first()
+        session = ChatSession.objects(id=session_id, user=request.user, is_deleted=False).first()
         if not session:
             raise NotFound("Chat session not found.")
             
-        session.delete()
+        from common.soft_delete_service import soft_delete
+        soft_delete(session, request.user)
         return Response({
             "success": True,
             "message": "Session deleted successfully."
@@ -185,7 +186,10 @@ def delete_session_view(request, session_id):
 def delete_all_sessions_view(request):
     """DELETE: Delete all chat sessions for the user."""
     try:
-        ChatSession.objects(user=request.user).delete()
+        from common.soft_delete_service import soft_delete
+        sessions = ChatSession.objects(user=request.user, is_deleted=False)
+        for session in sessions:
+            soft_delete(session, request.user)
         return Response({
             "success": True,
             "message": "All chat sessions deleted successfully."

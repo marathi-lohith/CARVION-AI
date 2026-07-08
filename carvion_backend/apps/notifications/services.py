@@ -27,7 +27,7 @@ def unregister_listener(user_id_str: str, q: queue.Queue):
             del sse_listeners[user_id_str]
 
 
-def send_notification(user, type_str: str, title: str, message: str) -> Notification:
+def send_notification(user, type_str: str, title: str, message: str, priority: str = "medium", source_module: str = "System", payload: dict = None) -> Notification:
     """
     Publish a notification event:
     1. Saves the record to MongoDB collection.
@@ -38,7 +38,10 @@ def send_notification(user, type_str: str, title: str, message: str) -> Notifica
         user=user,
         type=type_str,
         title=title,
-        message=message
+        message=message,
+        priority=priority,
+        source_module=source_module,
+        payload=payload or {}
     )
     notification.save()
     

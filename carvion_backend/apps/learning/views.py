@@ -34,7 +34,7 @@ def sync_system_roadmap(user):
         f"{target_role}::{state.get('resume_skill_hash', '')}::{state.get('inventory_skill_hash', '')}::{state.get('missing_skill_hash', '')}".encode("utf-8")
     ).hexdigest()
 
-    system_roadmap = Roadmap.objects(user=user, is_system_generated=True).first()
+    system_roadmap = Roadmap.objects(user=user, is_system_generated=True, is_deleted=False).first()
 
     if target_role:
         if system_roadmap:
@@ -54,7 +54,7 @@ def sync_system_roadmap(user):
                 user=user,
                 target_role=target_role,
                 milestones=milestones,
-                is_active=Roadmap.objects(user=user, is_active=True).first() is None,
+                is_active=Roadmap.objects(user=user, is_active=True, is_deleted=False).first() is None,
                 is_system_generated=True,
                 profile_state_hash=combined_hash,
                 schema_version=2
@@ -67,9 +67,10 @@ def sync_system_roadmap(user):
         if system_roadmap:
             logger.info("Target role cleared. Deleting system roadmap.")
             was_active = system_roadmap.is_active
-            system_roadmap.delete()
+            from common.soft_delete_service import soft_delete
+            soft_delete(system_roadmap, user)
             if was_active:
-                next_roadmap = Roadmap.objects(user=user).first()
+                next_roadmap = Roadmap.objects(user=user, is_deleted=False).first()
                 if next_roadmap:
                     next_roadmap.is_active = True
                     next_roadmap.save()
@@ -221,16 +222,16 @@ def active_roadmap_view(request):
     """
     GET: Retrieve user active learning roadmap.
     """
-    roadmap = Roadmap.objects(user=request.user, is_active=True).first()
+    roadmap = Roadmap.objects(user=request.user, is_active=True, is_deleted=False).first()
     if not roadmap:
-        roadmap = Roadmap.objects(user=request.user).first()
+        roadmap = Roadmap.objects(user=request.user, is_deleted=False).first()
         if roadmap:
             roadmap.is_active = True
             roadmap.save()
         else:
             # Safety fallback for new or uncompiled users
             sync_system_roadmap(request.user)
-            roadmap = Roadmap.objects(user=request.user, is_active=True).first()
+            roadmap = Roadmap.objects(user=request.user, is_active=True, is_deleted=False).first()
 
     if not roadmap:
         raise NotFound("No active roadmap found. Please specify target role to compile a path.")
@@ -279,7 +280,8 @@ def active_roadmap_view(request):
             progress_list = RoadmapVideoProgress.objects(
                 user=request.user,
                 roadmap=roadmap,
-                milestone_id=m_id
+                milestone_id=m_id,
+                is_deleted=False
             )
             progress_map = {p.video_id: p for p in progress_list}
 
@@ -354,13 +356,13 @@ def generate_roadmap_view(request):
     # 3. Deactivate existing roadmaps and write new document.
     #    schema_version=2 marks this as a Guided Learning roadmap so both the
     #    video-population helper and active_roadmap_view will fully enrich it.
-    prev_active = Roadmap.objects(user=request.user, is_active=True).first()
+    prev_active = Roadmap.objects(user=request.user, is_active=True, is_deleted=False).first()
     if prev_active:
         prev_active.is_active = False
         prev_active.save()
 
     # Just in case there are multiple, deactivate them
-    Roadmap.objects(user=request.user, id__ne=prev_active.id if prev_active else None).update(set__is_active=False)
+    Roadmap.objects(user=request.user, is_deleted=False, id__ne=prev_active.id if prev_active else None).update(set__is_active=False)
 
     roadmap = Roadmap(
         user=request.user,
@@ -435,7 +437,7 @@ def regenerate_roadmap_view(request):
     from apps.learning.models import Roadmap
     
     # Keep old system roadmap temporarily and rename its system flag so the build doesn't conflict
-    old_system_roadmap = Roadmap.objects(user=request.user, is_system_generated=True).first()
+    old_system_roadmap = Roadmap.objects(user=request.user, is_system_generated=True, is_deleted=False).first()
     if old_system_roadmap:
         old_system_roadmap.is_system_generated = False
         old_system_roadmap.save()
@@ -459,7 +461,8 @@ def regenerate_roadmap_view(request):
         
         # Success! Delete the old system roadmap
         if old_system_roadmap:
-            old_system_roadmap.delete()
+            from common.soft_delete_service import soft_delete
+            soft_delete(old_system_roadmap, request.user)
     except Exception as exc:
         # Revert
         if roadmap:
@@ -492,9 +495,9 @@ def toggle_node_completion_view(request, node_id):
     POST: Toggle the completion state of a specific node (milestone) in the active roadmap.
     Also records a milestone completion event in LearningActivity for today.
     """
-    roadmap = Roadmap.objects(user=request.user, is_active=True).first()
+    roadmap = Roadmap.objects(user=request.user, is_active=True, is_deleted=False).first()
     if not roadmap:
-        roadmap = Roadmap.objects(user=request.user).first()
+        roadmap = Roadmap.objects(user=request.user, is_deleted=False).first()
     if not roadmap:
         raise NotFound("No active learning roadmap found for the user.")
 
@@ -541,9 +544,9 @@ def learning_progress_view(request):
     """
     GET: Retrieve user progress analytics on active career milestones.
     """
-    roadmap = Roadmap.objects(user=request.user, is_active=True).first()
+    roadmap = Roadmap.objects(user=request.user, is_active=True, is_deleted=False).first()
     if not roadmap:
-        roadmap = Roadmap.objects(user=request.user).first()
+        roadmap = Roadmap.objects(user=request.user, is_deleted=False).first()
 
     if not roadmap or not roadmap.milestones:
         return Response({
@@ -582,7 +585,7 @@ def roadmap_list_view(request):
     GET: Retrieve all user's generated roadmaps.
     """
     sync_system_roadmap(request.user)
-    roadmaps = Roadmap.objects(user=request.user).order_by("-created_at")
+    roadmaps = Roadmap.objects(user=request.user, is_deleted=False).order_by("-created_at")
     return Response({
         "success": True,
         "data": RoadmapSerializer(roadmaps, many=True).data
@@ -597,11 +600,11 @@ def select_active_roadmap_view(request, roadmap_id):
     POST: Set a specific roadmap as active, deactivating all others.
     """
     try:
-        roadmap = Roadmap.objects.get(id=roadmap_id, user=request.user)
+        roadmap = Roadmap.objects.get(id=roadmap_id, user=request.user, is_deleted=False)
     except Roadmap.DoesNotExist:
         raise NotFound("Requested roadmap not found.")
 
-    Roadmap.objects(user=request.user).update(set__is_active=False)
+    Roadmap.objects(user=request.user, is_deleted=False).update(set__is_active=False)
     roadmap.is_active = True
     roadmap.save()
 
@@ -618,7 +621,7 @@ def delete_roadmap_view(request, roadmap_id):
     DELETE: Revoke a roadmap.
     """
     try:
-        roadmap = Roadmap.objects.get(id=roadmap_id, user=request.user)
+        roadmap = Roadmap.objects.get(id=roadmap_id, user=request.user, is_deleted=False)
     except Roadmap.DoesNotExist:
         raise NotFound("Requested roadmap not found.")
 
@@ -632,10 +635,11 @@ def delete_roadmap_view(request, roadmap_id):
         }, status=status.HTTP_400_BAD_REQUEST)
 
     was_active = roadmap.is_active
-    roadmap.delete()
+    from common.soft_delete_service import soft_delete
+    soft_delete(roadmap, request.user)
 
     if was_active:
-        next_roadmap = Roadmap.objects(user=request.user).first()
+        next_roadmap = Roadmap.objects(user=request.user, is_deleted=False).first()
         if next_roadmap:
             next_roadmap.is_active = True
             next_roadmap.save()
@@ -679,7 +683,7 @@ def track_learning_activity_view(request):
 @permission_classes([IsAuthenticated])
 def learning_analytics_view(request):
     # Fetch video learning sessions
-    video_sessions = list(LearningSession.objects(user=request.user, activity_type='Video'))
+    video_sessions = list(LearningSession.objects(user=request.user, activity_type='Video', is_deleted=False))
     total_seconds = sum(s.duration for s in video_sessions)
     total_minutes = round(total_seconds / 60)
     total_hours = round(total_minutes / 60, 1)
@@ -692,7 +696,8 @@ def learning_analytics_view(request):
     completed_video_sessions = LearningSession.objects(
         user=request.user,
         activity_type='Video',
-        completion_percentage__gte=80
+        completion_percentage__gte=80,
+        is_deleted=False
     )
     unique_courses_completed = {s.course_id for s in completed_video_sessions if s.course_id}
     videos_completed = len(unique_courses_completed)
@@ -701,7 +706,8 @@ def learning_analytics_view(request):
     video_sessions_with_watch = LearningSession.objects(
         user=request.user,
         activity_type='Video',
-        duration__gt=0
+        duration__gt=0,
+        is_deleted=False
     )
     study_dates = {s.date for s in video_sessions_with_watch if s.date}
     learning_days = len(study_dates)
@@ -726,7 +732,7 @@ def learning_analytics_view(request):
 
     # Helper function to get study minutes for a date
     def get_daily_minutes(date_str):
-        sessions = LearningSession.objects(user=request.user, date=date_str, activity_type='Video')
+        sessions = LearningSession.objects(user=request.user, date=date_str, activity_type='Video', is_deleted=False)
         seconds = sum(s.duration for s in sessions)
         return round(seconds / 60)
 
@@ -756,7 +762,8 @@ def learning_analytics_view(request):
             user=request.user,
             activity_type='Video',
             start_time__gte=start_dt,
-            start_time__lte=end_dt
+            start_time__lte=end_dt,
+            is_deleted=False
         )
         week_total_sec = sum(s.duration for s in sessions)
         monthly_minutes.append(round(week_total_sec / 60))
@@ -818,7 +825,8 @@ def track_learning_pulse_view(request):
         user=request.user,
         activity_type=activity_type,
         course_id=course_id,
-        end_time__gte=fifteen_mins_ago
+        end_time__gte=fifteen_mins_ago,
+        is_deleted=False
     ).order_by("-end_time").first()
     
     if session:
@@ -839,7 +847,7 @@ def track_learning_pulse_view(request):
         session.save()
         
     # Recalculate daily minutes studied and sync to LearningActivity
-    total_seconds_today = sum(s.duration for s in LearningSession.objects(user=request.user, date=today_str))
+    total_seconds_today = sum(s.duration for s in LearningSession.objects(user=request.user, date=today_str, is_deleted=False))
     total_minutes_today = round(total_seconds_today / 60)
     
     activity = LearningActivity.objects(user=request.user, date=today_str).first()
@@ -894,6 +902,10 @@ def track_video_watch_view(request):
         )
         watched.save()
         is_new = True
+    elif watched.is_deleted:
+        from common.soft_delete_service import restore
+        restore(watched)
+        is_new = True
         
         # Increment lifetime counter for cover letters / videos watched?
         # Log a learning session of type 'Video' for 10 minutes (600 seconds)
@@ -910,7 +922,7 @@ def track_video_watch_view(request):
         session.save()
         
         # Sync LearningActivity minutes
-        total_seconds_today = sum(s.duration for s in LearningSession.objects(user=request.user, date=today_str))
+        total_seconds_today = sum(s.duration for s in LearningSession.objects(user=request.user, date=today_str, is_deleted=False))
         total_minutes_today = round(total_seconds_today / 60)
         
         activity = LearningActivity.objects(user=request.user, date=today_str).first()
@@ -989,7 +1001,7 @@ def track_learning_session_update_view(request):
         }, status=status.HTTP_400_BAD_REQUEST)
         
     try:
-        session = LearningSession.objects.get(id=session_id, user=request.user)
+        session = LearningSession.objects.get(id=session_id, user=request.user, is_deleted=False)
     except Exception:
         return Response({
             "success": False,
@@ -1006,7 +1018,7 @@ def track_learning_session_update_view(request):
     session.save()
     
     # Recalculate daily minutes studied and sync to LearningActivity
-    total_seconds_today = sum(s.duration for s in LearningSession.objects(user=request.user, date=today_str))
+    total_seconds_today = sum(s.duration for s in LearningSession.objects(user=request.user, date=today_str, is_deleted=False))
     total_minutes_today = round(total_seconds_today / 60)
     
     activity = LearningActivity.objects(user=request.user, date=today_str).first()
@@ -1038,13 +1050,13 @@ def roadmap_analytics_view(request):
     roadmap_id = request.query_params.get("roadmap_id")
     if roadmap_id:
         try:
-            roadmap = Roadmap.objects.get(id=roadmap_id, user=request.user)
+            roadmap = Roadmap.objects.get(id=roadmap_id, user=request.user, is_deleted=False)
         except Exception:
             roadmap = None
     else:
-        roadmap = Roadmap.objects(user=request.user, is_active=True).first()
+        roadmap = Roadmap.objects(user=request.user, is_active=True, is_deleted=False).first()
         if not roadmap:
-            roadmap = Roadmap.objects(user=request.user).first()
+            roadmap = Roadmap.objects(user=request.user, is_deleted=False).first()
             
     # If no roadmap exists at all, return empty template
     if not roadmap:
@@ -1080,7 +1092,7 @@ def roadmap_analytics_view(request):
         })
         
     # 2. Get RoadmapVideoProgress records for this specific roadmap
-    progress_records = RoadmapVideoProgress.objects(user=request.user, roadmap=roadmap)
+    progress_records = RoadmapVideoProgress.objects(user=request.user, roadmap=roadmap, is_deleted=False)
     
     # Calculate real watched time (sum of total_minutes_watched across all progress records of this roadmap)
     total_minutes = round(sum(p.total_minutes_watched for p in progress_records))
@@ -1091,7 +1103,8 @@ def roadmap_analytics_view(request):
     sessions = LearningSession.objects(
         user=request.user,
         activity_type='Video',
-        course_id=str(roadmap.id)
+        course_id=str(roadmap.id),
+        is_deleted=False
     )
     
     learning_days_dates = {s.date for s in sessions if s.date}
@@ -1278,7 +1291,7 @@ def track_roadmap_video_progress_view(request):
         }, status=status.HTTP_400_BAD_REQUEST)
         
     try:
-        roadmap = Roadmap.objects.get(id=roadmap_id, user=request.user)
+        roadmap = Roadmap.objects.get(id=roadmap_id, user=request.user, is_deleted=False)
     except Exception:
         return Response({
             "success": False,
@@ -1295,6 +1308,10 @@ def track_roadmap_video_progress_view(request):
         milestone_id=milestone_id,
         video_id=video_id
     ).first()
+    if progress:
+        if progress.is_deleted:
+            from common.soft_delete_service import restore
+            restore(progress)
     
     if not progress:
         title = ""
@@ -1347,7 +1364,8 @@ def track_roadmap_video_progress_view(request):
         activity_type='Video',
         course_id=roadmap_id,
         video_id=video_id,
-        end_time__gte=fifteen_mins_ago
+        end_time__gte=fifteen_mins_ago,
+        is_deleted=False
     ).order_by("-end_time").first()
     
     if session:
@@ -1372,7 +1390,7 @@ def track_roadmap_video_progress_view(request):
         session.save()
         
     # Sync today's LearningActivity studied minutes
-    total_seconds_today = sum(s.duration for s in LearningSession.objects(user=request.user, date=today_str))
+    total_seconds_today = sum(s.duration for s in LearningSession.objects(user=request.user, date=today_str, is_deleted=False))
     total_minutes_today = round(total_seconds_today / 60)
     
     activity = LearningActivity.objects(user=request.user, date=today_str).first()
@@ -1402,7 +1420,8 @@ def track_roadmap_video_progress_view(request):
                     roadmap=roadmap,
                     milestone_id=milestone_id,
                     video_id=vid_id,
-                    completed=True
+                    completed=True,
+                    is_deleted=False
                 ).first()
                 if not vp:
                     all_videos_completed = False

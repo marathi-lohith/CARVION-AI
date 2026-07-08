@@ -304,7 +304,7 @@ def saved_jobs_view(request):
     import datetime
 
     if request.method == "GET":
-        saved = SavedJob.objects(user=request.user).order_by("-created_at")
+        saved = SavedJob.objects(user=request.user, is_deleted=False).order_by("-created_at")
         serializer = SavedJobSerializer(saved, many=True)
         return Response({"success": True, "data": serializer.data})
 
@@ -323,6 +323,9 @@ def saved_jobs_view(request):
         job_id = serializer.validated_data["job_id"]
         existing = SavedJob.objects(user=request.user, job_id=job_id).first()
         if existing:
+            if existing.is_deleted:
+                from common.soft_delete_service import restore
+                restore(existing)
             return Response({"success": True, "data": SavedJobSerializer(existing).data})
 
         saved_job = SavedJob(
@@ -346,11 +349,12 @@ def saved_jobs_view(request):
         if not job_id:
             return Response({"success": False, "error": {"message": "job_id is required."}}, status=status.HTTP_400_BAD_REQUEST)
 
-        job = SavedJob.objects(user=request.user, job_id=job_id).first()
+        job = SavedJob.objects(user=request.user, job_id=job_id, is_deleted=False).first()
         if job:
             from common.utils import log_user_activity
             log_user_activity(request.user, "jobs", "job_unsave", f"Unsaved job listing: {job.title} at {job.company}", metadata={"job_id": job_id, "title": job.title, "company": job.company})
-            job.delete()
+            from common.soft_delete_service import soft_delete
+            soft_delete(job, request.user)
 
         return Response({"success": True})
 
@@ -369,7 +373,7 @@ def job_applications_view(request):
     import datetime
 
     if request.method == "GET":
-        apps = JobApplication.objects(user=request.user).order_by("-applied_at")
+        apps = JobApplication.objects(user=request.user, is_deleted=False).order_by("-applied_at")
         serializer = JobApplicationSerializer(apps, many=True)
         return Response({"success": True, "data": serializer.data})
 
@@ -387,7 +391,11 @@ def job_applications_view(request):
 
         job_id = serializer.validated_data["job_id"]
         app = JobApplication.objects(user=request.user, job_id=job_id).first()
-        if not app:
+        if app:
+            if app.is_deleted:
+                from common.soft_delete_service import restore
+                restore(app)
+        else:
             app = JobApplication(
                 user=request.user,
                 job_id=job_id,
@@ -410,10 +418,10 @@ def job_applications_view(request):
         if not app_id:
             return Response({"success": False, "error": {"message": "id/job_id is required."}}, status=status.HTTP_400_BAD_REQUEST)
 
-        app = JobApplication.objects(user=request.user, job_id=app_id).first()
+        app = JobApplication.objects(user=request.user, job_id=app_id, is_deleted=False).first()
         if not app:
             try:
-                app = JobApplication.objects(user=request.user, id=app_id).first()
+                app = JobApplication.objects(user=request.user, id=app_id, is_deleted=False).first()
             except Exception:
                 app = None
         if not app:
@@ -436,11 +444,12 @@ def job_applications_view(request):
         if not job_id:
             return Response({"success": False, "error": {"message": "job_id is required."}}, status=status.HTTP_400_BAD_REQUEST)
 
-        app = JobApplication.objects(user=request.user, job_id=job_id).first()
+        app = JobApplication.objects(user=request.user, job_id=job_id, is_deleted=False).first()
         if app:
             from common.utils import log_user_activity
             log_user_activity(request.user, "jobs", "job_app_delete", f"Removed job application record: {app.title} at {app.company}", metadata={"job_id": job_id, "title": app.title, "company": app.company})
-            app.delete()
+            from common.soft_delete_service import soft_delete
+            soft_delete(app, request.user)
 
         return Response({"success": True})
 
@@ -697,7 +706,7 @@ def career_insights_history_view(request):
     """GET: Retrieve career insights generation history for the user."""
     from apps.recommendations.models import CareerInsightHistory
     from apps.recommendations.serializers import CareerInsightHistorySerializer
-    history = CareerInsightHistory.objects(user=request.user).order_by("-created_at")
+    history = CareerInsightHistory.objects(user=request.user, is_deleted=False).order_by("-created_at")
     serializer = CareerInsightHistorySerializer(history, many=True)
     return Response({
         "success": True,
@@ -714,8 +723,9 @@ def career_insight_delete_view(request, insight_id):
     try:
         if not ObjectId.is_valid(insight_id):
             return Response({"success": False, "error": {"message": "Invalid career insight ID."}}, status=status.HTTP_400_BAD_REQUEST)
-        item = CareerInsightHistory.objects.get(id=insight_id, user=request.user)
-        item.delete()
+        item = CareerInsightHistory.objects.get(id=insight_id, user=request.user, is_deleted=False)
+        from common.soft_delete_service import soft_delete
+        soft_delete(item, request.user)
         return Response({"success": True, "message": "Career insight deleted from history."})
     except CareerInsightHistory.DoesNotExist:
         return Response({"success": False, "error": {"message": "Career insight record not found."}}, status=status.HTTP_404_NOT_FOUND)
@@ -726,7 +736,10 @@ def career_insight_delete_view(request, insight_id):
 def career_insight_delete_all_view(request):
     """DELETE: Delete all career insight history items for the user."""
     from apps.recommendations.models import CareerInsightHistory
-    CareerInsightHistory.objects(user=request.user).delete()
+    from common.soft_delete_service import soft_delete
+    items = CareerInsightHistory.objects(user=request.user, is_deleted=False)
+    for item in items:
+        soft_delete(item, request.user)
     return Response({"success": True, "message": "All career insight history deleted."})
 
 
@@ -758,9 +771,9 @@ def platform_stats_view(request):
         
         # Calculate Average ATS Score (from current active resume data)
         avg_ats_score = 0
-        current_resumes_count = Resume.objects.count()
+        current_resumes_count = Resume.objects(is_deleted=False).count()
         if current_resumes_count > 0:
-            total_score = Resume.objects.sum('ats_score')
+            total_score = Resume.objects(is_deleted=False).sum('ats_score')
             avg_ats_score = round(total_score / current_resumes_count)
             
         data = {
@@ -790,7 +803,7 @@ def list_saved_courses_view(request):
     from apps.recommendations.models import SavedCourse
     from apps.recommendations.serializers import SavedCourseSerializer
 
-    saved = SavedCourse.objects(user=request.user).order_by("-created_at")
+    saved = SavedCourse.objects(user=request.user, is_deleted=False).order_by("-created_at")
     serializer = SavedCourseSerializer(saved, many=True)
     return Response({"success": True, "data": serializer.data})
 
@@ -818,6 +831,9 @@ def save_course_view(request):
     course_id = serializer.validated_data["course_id"]
     existing = SavedCourse.objects(user=request.user, course_id=course_id).first()
     if existing:
+        if existing.is_deleted:
+            from common.soft_delete_service import restore
+            restore(existing)
         return Response({"success": True, "data": SavedCourseSerializer(existing).data})
 
     saved_course = SavedCourse(
@@ -848,7 +864,7 @@ def delete_saved_course_view(request, pk):
     from rest_framework.exceptions import NotFound
 
     try:
-        saved_course = SavedCourse.objects(user=request.user, id=pk).first()
+        saved_course = SavedCourse.objects(user=request.user, id=pk, is_deleted=False).first()
     except ValidationError:
         raise NotFound("Saved course not found.")
 
@@ -858,7 +874,8 @@ def delete_saved_course_view(request, pk):
     from common.utils import log_user_activity
     log_user_activity(request.user, "learning", "course_unsave", f"Unsaved course: {saved_course.title}", metadata={"course_id": saved_course.course_id, "title": saved_course.title})
 
-    saved_course.delete()
+    from common.soft_delete_service import soft_delete
+    soft_delete(saved_course, request.user)
     return Response({"success": True, "message": "Course removed from saved courses."})
 
 

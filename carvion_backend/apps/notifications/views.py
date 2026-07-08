@@ -27,7 +27,7 @@ logger = logging.getLogger("carvion.api")
 @permission_classes([IsAuthenticated])
 def notification_list_view(request):
     """GET: Fetch list of notifications (both read and unread) for current user."""
-    notifications = Notification.objects(user=request.user).order_by("-created_at")[:100]
+    notifications = Notification.objects(user=request.user, is_deleted=False).order_by("-created_at")[:100]
     serializer = NotificationSerializer(notifications, many=True)
     return Response({
         "success": True,
@@ -40,7 +40,7 @@ def notification_list_view(request):
 def mark_read_view(request, notification_id):
     """POST: Mark a specific notification as read."""
     try:
-        notif = Notification.objects.get(id=notification_id, user=request.user)
+        notif = Notification.objects.get(id=notification_id, user=request.user, is_deleted=False)
     except Notification.DoesNotExist:
         raise NotFound("Requested notification alert not found.")
 
@@ -53,7 +53,7 @@ def mark_read_view(request, notification_id):
 @permission_classes([IsAuthenticated])
 def mark_all_read_view(request):
     """POST: Mark all unread notifications for current user as read."""
-    Notification.objects(user=request.user, is_read=False).update(set__is_read=True)
+    Notification.objects(user=request.user, is_read=False, is_deleted=False).update(set__is_read=True)
     return Response({"success": True})
 
 
@@ -62,11 +62,12 @@ def mark_all_read_view(request):
 def delete_notification_view(request, notification_id):
     """DELETE: Permanently delete a notification document."""
     try:
-        notif = Notification.objects.get(id=notification_id, user=request.user)
+        notif = Notification.objects.get(id=notification_id, user=request.user, is_deleted=False)
     except Notification.DoesNotExist:
         raise NotFound("Requested notification alert not found.")
         
-    notif.delete()
+    from common.soft_delete_service import soft_delete
+    soft_delete(notif, request.user)
     return Response({"success": True})
 
 

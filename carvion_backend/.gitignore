@@ -161,3 +161,10 @@ Thumbs.db
 # Project logs
 logs/*.log
 !logs/.gitkeep
+
+# Media uploads
+media/resumes/
+
+# Scratch scripts
+scratch/
+

@@ -24,6 +24,17 @@ logger = logging.getLogger("carvion.api")
 @permission_classes([AllowAny])
 def register_view(request):
     """Register a new credentials user and auto-login."""
+    from apps.admin.models import SystemConfig
+    config = SystemConfig.get_settings()
+    if not config.enable_public_registration:
+        return Response({
+            "success": False,
+            "error": {
+                "message": "Public registration is currently disabled by system administrators.",
+                "code": "RegistrationDisabled"
+            }
+        }, status=status.HTTP_403_FORBIDDEN)
+
     serializer = RegisterSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(
@@ -105,6 +116,21 @@ def login_view(request):
     ua = request.META.get("HTTP_USER_AGENT", "unknown")
     log_user_activity(user, "auth", "login", f"Successful login", metadata={"user_agent": ua})
 
+    if user.role == "admin":
+        try:
+            from apps.admin.views import log_admin_action
+            log_admin_action(
+                admin_user=user,
+                action="admin_login",
+                module="auth",
+                target_record=str(user.id),
+                description=f"Administrator {user.email} successfully logged in",
+                status="success",
+                request=request
+            )
+        except Exception:
+            pass
+
     return response
 
 
@@ -147,6 +173,22 @@ def google_oauth_view(request):
     response = Response({"success": True})
     user_data = issue_user_session(user, response)
     response.data["data"] = user_data
+
+    if user.role == "admin":
+        try:
+            from apps.admin.views import log_admin_action
+            log_admin_action(
+                admin_user=user,
+                action="admin_login",
+                module="auth",
+                target_record=str(user.id),
+                description=f"Administrator {user.email} successfully logged in via Google OAuth",
+                status="success",
+                request=request
+            )
+        except Exception:
+            pass
+
     return response
 
 
@@ -171,9 +213,12 @@ def token_refresh_view(request):
     except jwt.InvalidTokenError as exc:
         raise AuthenticationFailed("Invalid token signatures.") from exc
 
-    user = token_doc.user
-    if not user or not user.is_active:
-        raise AuthenticationFailed("Associated user account is deactivated or missing.")
+    try:
+        user = token_doc.user
+        if not user or not user.is_active:
+            raise AuthenticationFailed("Associated user account is deactivated or missing.")
+    except Exception as exc:
+        raise AuthenticationFailed("Associated user account is deactivated or missing.") from exc
 
     response = Response({"success": True})
     user_data = issue_user_session(user, response)
@@ -187,6 +232,22 @@ def logout_view(request):
     """Revoke refresh session database records and flush HTTP cookies."""
     from common.utils import log_user_activity
     log_user_activity(request.user, "auth", "logout", "User logged out")
+
+    if request.user.role == "admin":
+        try:
+            from apps.admin.views import log_admin_action
+            log_admin_action(
+                admin_user=request.user,
+                action="admin_logout",
+                module="auth",
+                target_record=str(request.user.id),
+                description=f"Administrator {request.user.email} logged out",
+                status="success",
+                request=request
+            )
+        except Exception:
+            pass
+
     response = Response({"success": True})
     clear_user_session(request, response)
     return response

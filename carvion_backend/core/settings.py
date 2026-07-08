@@ -57,6 +57,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "common.middlewares.SecuritySanitizationMiddleware",  # Custom middleware
+    "common.middlewares.MaintenanceModeMiddleware",       # Custom middleware
     "common.middlewares.GlobalExceptionMiddleware",      # Custom middleware
 ]
 

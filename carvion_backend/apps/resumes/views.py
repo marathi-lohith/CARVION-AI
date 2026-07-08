@@ -241,14 +241,48 @@ def resume_detail_view(request, resume_id):
     DELETE: Revoke resume from database.
     """
     try:
-        resume = Resume.objects.get(id=resume_id, user=request.user)
+        if request.user.role == "admin":
+            resume = Resume.objects.get(id=resume_id)
+        else:
+            resume = Resume.objects.get(id=resume_id, user=request.user)
     except Resume.DoesNotExist:
         raise NotFound("Requested resume record not found.")
 
     if request.method == "GET":
+        data = ResumeSerializer(resume).data
+        if request.user.role == "admin":
+            from apps.resumes.models import ResumeOptimization, CoverLetter
+            opts = ResumeOptimization.objects(user=resume.user)
+            cls = CoverLetter.objects(user=resume.user)
+            
+            data["optimizations"] = [{
+                "id": str(o.id),
+                "target_role": o.target_role,
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+                "score": o.score,
+                "is_deleted": o.is_deleted
+            } for o in opts]
+            
+            data["cover_letters"] = [{
+                "id": str(c.id),
+                "job_title": c.job_title,
+                "company": c.company,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "is_deleted": c.is_deleted
+            } for c in cls]
+            
+            hist = Resume.objects(user=resume.user).order_by("-created_at")
+            data["history"] = [{
+                "id": str(h.id),
+                "name": h.name,
+                "ats_score": h.ats_score,
+                "created_at": h.created_at.isoformat() if h.created_at else None,
+                "is_deleted": h.is_deleted
+            } for h in hist]
+            
         return Response({
             "success": True,
-            "data": ResumeSerializer(resume).data
+            "data": data
         })
 
     # Delete request
@@ -273,7 +307,10 @@ def resume_render_pdf_view(request, resume_id):
     GET: Renders structural resume context into a WeasyPrint PDF file attachment response.
     """
     try:
-        resume = Resume.objects.get(id=resume_id, user=request.user)
+        if request.user.role == "admin":
+            resume = Resume.objects.get(id=resume_id)
+        else:
+            resume = Resume.objects.get(id=resume_id, user=request.user)
     except Resume.DoesNotExist:
         raise NotFound("Requested resume record not found.")
 

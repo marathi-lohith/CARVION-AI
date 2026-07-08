@@ -39,7 +39,8 @@ import {
   FiUsers,
   FiCpu,
   FiBookOpen,
-  FiDownload
+  FiDownload,
+  FiMessageSquare
 } from 'react-icons/fi';
 import { formatDate } from '../../../utils/formatters.js';
 import { ROUTES } from '../../../config/constants.js';

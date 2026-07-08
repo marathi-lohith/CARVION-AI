@@ -1,6 +1,7 @@
 import datetime
 from mongoengine import Document, ReferenceField, StringField, ListField, DictField, IntField, DateTimeField
 from apps.authentication.models import User
+from common.soft_delete_base import SoftDeleteDocument
 
 class MockTest(Document):
     """
@@ -32,7 +33,7 @@ class MockTest(Document):
     created_at = DateTimeField(default=datetime.datetime.utcnow)
 
 
-class Scorecard(Document):
+class Scorecard(SoftDeleteDocument):
     """
     MongoEngine Scorecard Document.
     Chronologically tracks test performance results and saves user analytics scorecards.
@@ -64,7 +65,7 @@ class Scorecard(Document):
     created_at = DateTimeField(default=datetime.datetime.utcnow)
 
 
-class InterviewSession(Document):
+class InterviewSession(SoftDeleteDocument):
     """
     MongoEngine InterviewSession Document.
     Tracks real-time adaptive text and voice mock interview dialogues and their evaluations.

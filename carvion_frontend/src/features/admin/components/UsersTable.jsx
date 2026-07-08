@@ -6,7 +6,7 @@ import {
   FiFilter, FiTrendingUp, FiCheck, FiMail, FiPhone, FiMapPin,
   FiGithub, FiLinkedin, FiEdit3, FiEye, FiCheckCircle, FiActivity,
   FiBriefcase, FiBookOpen, FiFileText, FiAward, FiMessageSquare,
-  FiCalendar, FiArrowRight, FiInfo, FiPercent
+  FiCalendar, FiArrowRight, FiInfo, FiPercent, FiChevronLeft, FiChevronRight, FiRefreshCw
 } from 'react-icons/fi';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip,
@@ -30,7 +30,11 @@ export default function UsersTable({
   const [statusFilter, setStatusFilter] = useState('all');
   const [expFilter, setExpFilter] = useState('all');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [systemRoleFilter, setSystemRoleFilter] = useState('all');
+  const [verificationFilter, setVerificationFilter] = useState('all');
   const [sortBy, setSortBy] = useState('-created_at');
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 10;
   
   // Selected user for Detail Drawer / Edit Modal
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -181,6 +185,7 @@ export default function UsersTable({
       result = result.filter(u => 
         (u.name || '').toLowerCase().includes(term) ||
         (u.email || '').toLowerCase().includes(term) ||
+        (u.username || '').toLowerCase().includes(term) ||
         (u.target_role || '').toLowerCase().includes(term) ||
         (u.experience || '').toLowerCase().includes(term) ||
         (u.phone || '').toLowerCase().includes(term) ||
@@ -202,6 +207,19 @@ export default function UsersTable({
     // Target Role Filter
     if (roleFilter !== 'all') {
       result = result.filter(u => u.target_role === roleFilter);
+    }
+
+    // System Role Filter
+    if (systemRoleFilter !== 'all') {
+      result = result.filter(u => u.role === systemRoleFilter);
+    }
+
+    // Verification Filter
+    if (verificationFilter !== 'all') {
+      result = result.filter(u => {
+        const isVerified = u.verification_status?.toLowerCase().includes('verified');
+        return verificationFilter === 'verified' ? isVerified : !isVerified;
+      });
     }
 
     // Sort
@@ -229,7 +247,55 @@ export default function UsersTable({
     });
 
     return result;
-  }, [users, searchTerm, statusFilter, expFilter, roleFilter, sortBy]);
+  }, [users, searchTerm, statusFilter, expFilter, roleFilter, systemRoleFilter, verificationFilter, sortBy]);
+
+  // Reset pagination page when filters or sorting change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, expFilter, roleFilter, systemRoleFilter, verificationFilter, sortBy]);
+
+  // Paginated user segment
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * usersPerPage;
+    return filteredUsers.slice(start, start + usersPerPage);
+  }, [filteredUsers, currentPage, usersPerPage]);
+
+  // Soft Delete Integration Action Helpers
+  const handleRestoreRecord = async (moduleName, recordId) => {
+    const ok = await confirm({
+      title: 'Restore Record',
+      message: 'Are you sure you want to restore this soft-deleted record? It will be active again.',
+      type: 'warning',
+      confirmText: 'Restore'
+    });
+    if (!ok) return;
+
+    try {
+      await apiClient.post(`/api/admin/records/${moduleName}/${recordId}/restore/`);
+      queryClient.invalidateQueries(['adminUserDetail', selectedUserId]);
+      queryClient.invalidateQueries(['adminUsersList']);
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Failed to restore record.');
+    }
+  };
+
+  const handleHardDeleteRecord = async (moduleName, recordId) => {
+    const ok = await confirm({
+      title: 'Permanently Delete Record',
+      message: 'Are you absolutely sure you want to permanently delete this record? This action CANNOT be undone.',
+      type: 'delete',
+      confirmText: 'Permanently Delete'
+    });
+    if (!ok) return;
+
+    try {
+      await apiClient.delete(`/api/admin/records/${moduleName}/${recordId}/hard-delete/`);
+      queryClient.invalidateQueries(['adminUserDetail', selectedUserId]);
+      queryClient.invalidateQueries(['adminUsersList']);
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Failed to hard delete record.');
+    }
+  };
 
   // Handle Edit Action
   const handleEditClick = (user) => {
@@ -417,6 +483,28 @@ export default function UsersTable({
               <option value="inactive">Inactive</option>
             </select>
 
+            {/* System Role Filter */}
+            <select
+              value={systemRoleFilter}
+              onChange={(e) => setSystemRoleFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none text-slate-700 dark:text-slate-350 font-semibold"
+            >
+              <option value="all">All Roles</option>
+              <option value="standard">Normal User</option>
+              <option value="admin">Administrator</option>
+            </select>
+
+            {/* Verification Filter */}
+            <select
+              value={verificationFilter}
+              onChange={(e) => setVerificationFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none text-slate-700 dark:text-slate-350 font-semibold"
+            >
+              <option value="all">All Verification</option>
+              <option value="verified">Verified (OAuth)</option>
+              <option value="unverified">Unverified</option>
+            </select>
+
             {/* Experience Filter */}
             <select
               value={expFilter}
@@ -462,12 +550,15 @@ export default function UsersTable({
       {/* 4. Main Data Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden transition-colors">
         <div className="overflow-x-auto max-w-full scrollbar-thin">
-          <table className="w-full border-collapse text-left text-xs min-w-[1200px]">
+          <table className="w-full border-collapse text-left text-xs min-w-[1600px]">
             <thead>
               <tr className="sticky top-0 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-200/50 dark:border-slate-800 z-10">
                 <th className="px-5 py-4">Avatar</th>
                 <th className="px-5 py-4">Full Name</th>
                 <th className="px-5 py-4">Email</th>
+                <th className="px-5 py-4">Username</th>
+                <th className="px-5 py-4">Role</th>
+                <th className="px-5 py-4">Verification</th>
                 <th className="px-5 py-4">Target Role</th>
                 <th className="px-5 py-4">Experience</th>
                 <th className="px-5 py-4 text-center">Resumes</th>
@@ -484,14 +575,14 @@ export default function UsersTable({
               {isLoading && users.length === 0 ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="animate-pulse odd:bg-slate-50/30 dark:odd:bg-slate-800/10">
-                    <td colSpan={13} className="px-5 py-5 text-center">
+                    <td colSpan={16} className="px-5 py-5 text-center">
                       <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-full" />
                     </td>
                   </tr>
                 ))
-              ) : filteredUsers.length === 0 ? (
+              ) : paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="px-6 py-16 text-center text-slate-450 dark:text-slate-500">
+                  <td colSpan={16} className="px-6 py-16 text-center text-slate-450 dark:text-slate-500">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <FiInfo className="w-8 h-8 text-slate-300 dark:text-slate-700" />
                       <span>No matching user records found.</span>
@@ -499,7 +590,7 @@ export default function UsersTable({
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((u) => (
+                paginatedUsers.map((u) => (
                   <tr key={u.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/10 transition-colors odd:bg-slate-55/10 dark:odd:bg-slate-900/5">
                     {/* Avatar */}
                     <td className="px-5 py-4">
@@ -513,6 +604,23 @@ export default function UsersTable({
 
                     {/* Email */}
                     <td className="px-5 py-4 text-slate-500 dark:text-slate-400 font-semibold">{u.email}</td>
+
+                    {/* Username */}
+                    <td className="px-5 py-4 text-slate-550 dark:text-slate-450 font-bold">{u.username}</td>
+
+                    {/* Role */}
+                    <td className="px-5 py-4">
+                      <span className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold ${u.role === 'admin' ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-950/20 dark:text-indigo-400' : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-850 dark:text-slate-400 dark:border-slate-800'}`}>
+                        {u.role}
+                      </span>
+                    </td>
+
+                    {/* Verification Status */}
+                    <td className="px-5 py-4">
+                      <span className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold ${u.verification_status?.includes('OAuth') ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20' : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20'}`}>
+                        {u.verification_status}
+                      </span>
+                    </td>
 
                     {/* Target Role */}
                     <td className="px-5 py-4">
@@ -616,6 +724,33 @@ export default function UsersTable({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {filteredUsers.length > usersPerPage && (
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4 text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-950/20">
+            <span>
+              Showing {Math.min(filteredUsers.length, (currentPage - 1) * usersPerPage + 1)} to {Math.min(filteredUsers.length, currentPage * usersPerPage)} of {filteredUsers.length} users
+            </span>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors disabled:cursor-not-allowed cursor-pointer"
+              >
+                <FiChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredUsers.length / usersPerPage), p + 1))}
+                disabled={currentPage === Math.ceil(filteredUsers.length / usersPerPage)}
+                className="p-2 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors disabled:cursor-not-allowed cursor-pointer"
+              >
+                <FiChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 5. Right-side Drawer */}
@@ -713,7 +848,43 @@ export default function UsersTable({
                     {/* Active Tab Panel */}
                     <div className="min-h-[300px]">
                       {activeDrawerTab === 'overview' && (
-                        <div className="space-y-5 animate-fade-in text-xs">
+                        <div className="space-y-5 animate-fade-in text-xs font-semibold">
+                          {/* Basic Details */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-800 space-y-1">
+                              <p className="text-[10px] text-slate-450 uppercase font-bold">Username ID</p>
+                              <p className="text-sm font-extrabold text-slate-850 dark:text-slate-200 mt-0.5">{userDetail.username || 'N/A'}</p>
+                            </div>
+                            <div className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-800 space-y-1">
+                              <p className="text-[10px] text-slate-455 uppercase font-bold">Verification Status</p>
+                              <p className="text-sm font-extrabold text-slate-850 dark:text-slate-200 mt-0.5">{userDetail.verification_status || 'Unverified'}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-800 space-y-1">
+                              <p className="text-[10px] text-slate-455 uppercase font-bold">Registered Timestamp</p>
+                              <p className="text-sm font-extrabold text-slate-850 dark:text-slate-200 mt-0.5">{userDetail.created_at ? new Date(userDetail.created_at).toLocaleString() : 'N/A'}</p>
+                            </div>
+                            <div className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-800 space-y-1">
+                              <p className="text-[10px] text-slate-455 uppercase font-bold">Last Account Login</p>
+                              <p className="text-sm font-extrabold text-slate-850 dark:text-slate-200 mt-0.5">{userDetail.last_login ? new Date(userDetail.last_login).toLocaleString() : 'N/A'}</p>
+                            </div>
+                          </div>
+
+                          {/* Notifications Stats Card */}
+                          <div className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-800 space-y-2">
+                            <p className="text-[10px] text-slate-455 uppercase font-bold">Sent Notifications System Stats</p>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-500 font-bold">Total Dispatched Messages:</span>
+                              <span className="font-extrabold text-slate-800 dark:text-slate-200">{userDetail.notifications?.total || 0} alerts</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-500 font-bold">Unread Alerts Payload:</span>
+                              <span className="font-extrabold text-orange-500">{userDetail.notifications?.unread || 0} unread</span>
+                            </div>
+                          </div>
+
                           {/* Career Details */}
                           <div className="grid grid-cols-2 gap-4">
                             <div className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-800">
@@ -771,7 +942,26 @@ export default function UsersTable({
                       )}
 
                       {activeDrawerTab === 'resumes' && (
-                        <div className="space-y-4 animate-fade-in text-xs">
+                        <div className="space-y-4 animate-fade-in text-xs font-semibold">
+                          {/* Resume Summary Card */}
+                          <div className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-850 space-y-2">
+                            <h5 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider">Resume Workspace Summary</h5>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-slate-400">Total Uploads:</span>
+                                <span className="font-extrabold text-slate-800 dark:text-slate-200 ml-1.5">{userDetail.resumes?.length || 0} documents</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400">Highest ATS:</span>
+                                <span className="font-extrabold text-emerald-500 ml-1.5">{userDetail.primary_resume?.ats_score || 0} pts</span>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="text-slate-400">Active Resume File:</span>
+                                <span className="font-extrabold text-slate-800 dark:text-slate-200 ml-1.5">{userDetail.primary_resume?.name || 'None'}</span>
+                              </div>
+                            </div>
+                          </div>
+
                           {userDetail.resumes && userDetail.resumes.length > 0 ? (
                             userDetail.resumes.map(r => (
                               <div key={r.id} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-4 rounded-xl space-y-2 relative shadow-xs">
@@ -792,6 +982,52 @@ export default function UsersTable({
                                     Primary
                                   </span>
                                 )}
+
+                                {/* Restore / Hard Delete Actions */}
+                                <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                  <div>
+                                    {r.is_deleted ? (
+                                      <span className="px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/20 text-red-500 text-[8px] font-bold">Soft Deleted</span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 text-[8px] font-bold">Active</span>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    {r.is_deleted ? (
+                                      <>
+                                        <button
+                                          onClick={() => handleRestoreRecord('resume', r.id)}
+                                          className="text-xs text-blue-500 hover:text-blue-600 font-bold hover:underline cursor-pointer"
+                                        >
+                                          Restore
+                                        </button>
+                                        <button
+                                          onClick={() => handleHardDeleteRecord('resume', r.id)}
+                                          className="text-xs text-red-500 hover:text-red-650 font-bold hover:underline cursor-pointer"
+                                        >
+                                          Hard Delete
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        onClick={async () => {
+                                          const ok = await confirm({
+                                            title: 'Soft Delete Resume',
+                                            message: 'Are you sure you want to soft delete this resume? It will disappear from the user workspace.',
+                                            type: 'delete'
+                                          });
+                                          if (ok) {
+                                            await apiClient.delete(`/api/resumes/delete/${r.id}/`);
+                                            queryClient.invalidateQueries(['adminUserDetail', selectedUserId]);
+                                          }
+                                        }}
+                                        className="text-xs text-slate-455 hover:text-red-500 font-bold hover:underline cursor-pointer"
+                                      >
+                                        Soft Delete
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             ))
                           ) : (
@@ -801,13 +1037,71 @@ export default function UsersTable({
                       )}
 
                       {activeDrawerTab === 'learning' && (
-                        <div className="space-y-4 animate-fade-in text-xs">
+                        <div className="space-y-4 animate-fade-in text-xs font-semibold">
+                          {/* Saved Courses Summary */}
+                          <div>
+                            <h5 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider mb-2">Saved Courses & Lessons</h5>
+                            {userDetail.saved_courses && userDetail.saved_courses.length > 0 ? (
+                              userDetail.saved_courses.map(course => (
+                                <div key={course.id} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-4 rounded-xl flex items-center justify-between mb-2 shadow-xs">
+                                  <div>
+                                    <h6 className="font-bold text-slate-800 dark:text-white flex items-center gap-1">
+                                      <FiBookOpen className="text-orange-500" /> {course.title}
+                                    </h6>
+                                    {course.is_deleted ? (
+                                      <span className="px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/20 text-red-500 text-[8px] font-bold mt-1 inline-block">Soft Deleted</span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 text-[8px] font-bold mt-1 inline-block">Active</span>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2.5">
+                                    {course.is_deleted ? (
+                                      <>
+                                        <button
+                                          onClick={() => handleRestoreRecord('savedcourse', course.id)}
+                                          className="text-xs text-blue-500 hover:text-blue-600 font-bold hover:underline cursor-pointer"
+                                        >
+                                          Restore
+                                        </button>
+                                        <button
+                                          onClick={() => handleHardDeleteRecord('savedcourse', course.id)}
+                                          className="text-xs text-red-500 hover:text-red-650 font-bold hover:underline cursor-pointer"
+                                        >
+                                          Hard Delete
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        onClick={async () => {
+                                          const ok = await confirm({
+                                            title: 'Soft Delete Course',
+                                            message: 'Are you sure you want to soft delete this course?',
+                                            type: 'delete'
+                                          });
+                                          if (ok) {
+                                            await apiClient.delete(`/api/recommendations/courses/saved/${course.id}/`);
+                                            queryClient.invalidateQueries(['adminUserDetail', selectedUserId]);
+                                          }
+                                        }}
+                                        className="text-xs text-slate-455 hover:text-red-500 font-bold hover:underline cursor-pointer"
+                                      >
+                                        Soft Delete
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-slate-450 italic">No saved courses.</p>
+                            )}
+                          </div>
+
                           {/* Active Roadmaps */}
                           <div>
                             <h5 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider mb-2">Roadmaps generated</h5>
                             {userDetail.roadmaps && userDetail.roadmaps.length > 0 ? (
                               userDetail.roadmaps.map(rm => (
-                                <div key={rm.id} className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-850 mb-3 space-y-3">
+                                <div key={rm.id} className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-850 mb-3 space-y-3 shadow-xs">
                                   <div className="flex items-center justify-between">
                                     <span className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                                       <FiBookOpen className="text-blue-500" /> {rm.target_role}
@@ -823,6 +1117,52 @@ export default function UsersTable({
                                     </div>
                                     <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                                       <div className="bg-blue-500 h-full rounded-full" style={{ width: `${(rm.completed_milestones_count / (rm.milestones_count || 1)) * 100}%` }} />
+                                    </div>
+                                  </div>
+
+                                  {/* Soft delete restored / hard delete controls */}
+                                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                                    <div>
+                                      {rm.is_deleted ? (
+                                        <span className="px-2 py-0.5 rounded bg-red-50 text-red-500 text-[8px] font-bold">Soft Deleted</span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[8px] font-bold">Active</span>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      {rm.is_deleted ? (
+                                        <>
+                                          <button
+                                            onClick={() => handleRestoreRecord('roadmap', rm.id)}
+                                            className="text-xs text-blue-500 hover:text-blue-600 font-bold hover:underline cursor-pointer"
+                                          >
+                                            Restore
+                                          </button>
+                                          <button
+                                            onClick={() => handleHardDeleteRecord('roadmap', rm.id)}
+                                            className="text-xs text-red-500 hover:text-red-650 font-bold hover:underline cursor-pointer"
+                                          >
+                                            Hard Delete
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          onClick={async () => {
+                                            const ok = await confirm({
+                                              title: 'Soft Delete Roadmap',
+                                              message: 'Are you sure you want to soft delete this career roadmap?',
+                                              type: 'delete'
+                                            });
+                                            if (ok) {
+                                              await apiClient.delete(`/api/learning/roadmap/delete/${rm.id}/`);
+                                              queryClient.invalidateQueries(['adminUserDetail', selectedUserId]);
+                                            }
+                                          }}
+                                          className="text-xs text-slate-455 hover:text-red-500 font-bold hover:underline cursor-pointer"
+                                        >
+                                          Soft Delete
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -857,27 +1197,75 @@ export default function UsersTable({
                       )}
 
                       {activeDrawerTab === 'jobs' && (
-                        <div className="space-y-4 animate-fade-in text-xs">
+                        <div className="space-y-4 animate-fade-in text-xs font-semibold">
                           {/* Applications */}
                           <div>
                             <h5 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider mb-2">Job Applications</h5>
                             {userDetail.applications && userDetail.applications.length > 0 ? (
                               userDetail.applications.map(ap => (
-                                <div key={ap.id} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-4 rounded-xl flex items-center justify-between mb-2">
-                                  <div>
-                                    <h6 className="font-bold text-slate-800 dark:text-white flex items-center gap-1">
-                                      <FiBriefcase className="text-orange-500" /> {ap.title}
-                                    </h6>
-                                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{ap.company} - {ap.location}</p>
+                                <div key={ap.id} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-4 rounded-xl flex flex-col mb-2 shadow-xs">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <h6 className="font-bold text-slate-800 dark:text-white flex items-center gap-1">
+                                        <FiBriefcase className="text-orange-500" /> {ap.title}
+                                      </h6>
+                                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{ap.company} - {ap.location}</p>
+                                    </div>
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${
+                                      ap.status === 'Offered' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20' :
+                                      ap.status === 'Rejected' ? 'bg-red-50 text-red-500 border-red-100' :
+                                      ap.status === 'Interviewing' ? 'bg-blue-50 text-blue-500 border-blue-100' :
+                                      'bg-slate-50 text-slate-500 border-slate-200'
+                                    }`}>
+                                      {ap.status}
+                                    </span>
                                   </div>
-                                  <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${
-                                    ap.status === 'Offered' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20' :
-                                    ap.status === 'Rejected' ? 'bg-red-50 text-red-500 border-red-100' :
-                                    ap.status === 'Interviewing' ? 'bg-blue-50 text-blue-500 border-blue-100' :
-                                    'bg-slate-50 text-slate-500 border-slate-200'
-                                  }`}>
-                                    {ap.status}
-                                  </span>
+
+                                  {/* Soft delete controls */}
+                                  <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 dark:border-slate-800 mt-2">
+                                    <div>
+                                      {ap.is_deleted ? (
+                                        <span className="px-2 py-0.5 rounded bg-red-50 text-red-500 text-[8px] font-bold">Soft Deleted</span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[8px] font-bold">Active</span>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      {ap.is_deleted ? (
+                                        <>
+                                          <button
+                                            onClick={() => handleRestoreRecord('jobapplication', ap.id)}
+                                            className="text-xs text-blue-500 hover:text-blue-600 font-bold hover:underline cursor-pointer"
+                                          >
+                                            Restore
+                                          </button>
+                                          <button
+                                            onClick={() => handleHardDeleteRecord('jobapplication', ap.id)}
+                                            className="text-xs text-red-500 hover:text-red-650 font-bold hover:underline cursor-pointer"
+                                          >
+                                            Hard Delete
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          onClick={async () => {
+                                            const ok = await confirm({
+                                              title: 'Soft Delete Application',
+                                              message: 'Are you sure you want to soft delete this job application record?',
+                                              type: 'delete'
+                                            });
+                                            if (ok) {
+                                              await apiClient.delete(`/api/recommendations/jobs/applications/`, { data: { job_id: ap.job_id } });
+                                              queryClient.invalidateQueries(['adminUserDetail', selectedUserId]);
+                                            }
+                                          }}
+                                          className="text-xs text-slate-455 hover:text-red-500 font-bold hover:underline cursor-pointer"
+                                        >
+                                          Soft Delete
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               ))
                             ) : (
@@ -891,9 +1279,57 @@ export default function UsersTable({
                             {userDetail.saved_jobs && userDetail.saved_jobs.length > 0 ? (
                               <div className="grid grid-cols-1 gap-2">
                                 {userDetail.saved_jobs.map(sj => (
-                                  <div key={sj.id} className="bg-slate-50/50 dark:bg-slate-950/40 p-3 rounded-xl border border-slate-200/40 dark:border-slate-850">
-                                    <p className="font-bold text-slate-800 dark:text-slate-200">{sj.title}</p>
-                                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{sj.company} - {sj.location}</p>
+                                  <div key={sj.id} className="bg-slate-50/50 dark:bg-slate-950/40 p-3 rounded-xl border border-slate-200/40 dark:border-slate-850 flex flex-col">
+                                    <div>
+                                      <p className="font-bold text-slate-800 dark:text-slate-200">{sj.title}</p>
+                                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{sj.company} - {sj.location}</p>
+                                    </div>
+
+                                    {/* Soft delete controls */}
+                                    <div className="flex justify-between items-center pt-1.5 border-t border-slate-150 dark:border-slate-800 mt-2">
+                                      <div>
+                                        {sj.is_deleted ? (
+                                          <span className="px-2 py-0.5 rounded bg-red-50 text-red-500 text-[8px] font-bold">Soft Deleted</span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[8px] font-bold">Active</span>
+                                        )}
+                                      </div>
+                                      <div className="flex gap-2">
+                                        {sj.is_deleted ? (
+                                          <>
+                                            <button
+                                              onClick={() => handleRestoreRecord('savedjob', sj.id)}
+                                              className="text-xs text-blue-500 hover:text-blue-600 font-bold hover:underline cursor-pointer"
+                                            >
+                                              Restore
+                                            </button>
+                                            <button
+                                              onClick={() => handleHardDeleteRecord('savedjob', sj.id)}
+                                              className="text-xs text-red-500 hover:text-red-650 font-bold hover:underline cursor-pointer"
+                                            >
+                                              Hard Delete
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <button
+                                            onClick={async () => {
+                                              const ok = await confirm({
+                                                title: 'Soft Delete Saved Job',
+                                                message: 'Are you sure you want to soft delete this bookmarked job?',
+                                                type: 'delete'
+                                              });
+                                              if (ok) {
+                                                await apiClient.delete(`/api/recommendations/jobs/saved/`, { data: { job_id: sj.job_id } });
+                                                queryClient.invalidateQueries(['adminUserDetail', selectedUserId]);
+                                              }
+                                            }}
+                                            className="text-xs text-slate-455 hover:text-red-500 font-bold hover:underline cursor-pointer"
+                                          >
+                                            Soft Delete
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -905,27 +1341,98 @@ export default function UsersTable({
                       )}
 
                       {activeDrawerTab === 'assessments' && (
-                        <div className="space-y-4 animate-fade-in text-xs">
+                        <div className="space-y-4 animate-fade-in text-xs font-semibold">
                           {/* Scorecards */}
                           <div>
-                            <h5 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider mb-2">Scorecards & Tests</h5>
+                            <h5 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider mb-2">Scorecards & Assessments</h5>
                             {userDetail.scorecards && userDetail.scorecards.length > 0 ? (
                               userDetail.scorecards.map(sc => (
-                                <div key={sc.id} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-4 rounded-xl flex items-center justify-between mb-2 shadow-xs">
-                                  <div>
-                                    <h6 className="font-bold text-slate-850 dark:text-white flex items-center gap-1">
-                                      <FiAward className="text-orange-500" /> {sc.domain}
-                                    </h6>
-                                    <p className="text-[9px] uppercase font-bold text-slate-400 mt-0.5">{sc.category} - {sc.difficulty}</p>
+                                <div key={sc.id} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-4 rounded-xl flex flex-col mb-2 shadow-xs">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h6 className="font-bold text-slate-850 dark:text-white flex items-center gap-1">
+                                        <FiAward className="text-orange-500" /> {sc.domain}
+                                      </h6>
+                                      <p className="text-[9px] uppercase font-bold text-slate-400 mt-0.5">{sc.category} - {sc.difficulty}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="font-black text-orange-500 text-sm">{sc.score}%</p>
+                                      <p className="text-[9px] text-slate-400 font-bold mt-0.5">{sc.correct_answers} / {sc.total_questions} correct</p>
+                                    </div>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="font-black text-orange-500 text-sm">{sc.score}%</p>
-                                    <p className="text-[9px] text-slate-400 font-bold mt-0.5">{sc.correct_answers} / {sc.total_questions} correct</p>
+
+                                  {/* Soft delete controls */}
+                                  <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 dark:border-slate-800 mt-2">
+                                    <div>
+                                      {sc.is_deleted ? (
+                                        <span className="px-2 py-0.5 rounded bg-red-50 text-red-500 text-[8px] font-bold">Soft Deleted</span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[8px] font-bold">Active</span>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      {sc.is_deleted ? (
+                                        <>
+                                          <button
+                                            onClick={() => handleRestoreRecord('scorecard', sc.id)}
+                                            className="text-xs text-blue-500 hover:text-blue-600 font-bold hover:underline cursor-pointer"
+                                          >
+                                            Restore
+                                          </button>
+                                          <button
+                                            onClick={() => handleHardDeleteRecord('scorecard', sc.id)}
+                                            className="text-xs text-red-500 hover:text-red-650 font-bold hover:underline cursor-pointer"
+                                          >
+                                            Hard Delete
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          onClick={async () => {
+                                            const ok = await confirm({
+                                              title: 'Soft Delete Scorecard',
+                                              message: 'Are you sure you want to soft delete this assessment scorecard?',
+                                              type: 'delete'
+                                            });
+                                            if (ok) {
+                                              await apiClient.delete(`/api/assessments/scorecards/delete/${sc.id}/`);
+                                              queryClient.invalidateQueries(['adminUserDetail', selectedUserId]);
+                                            }
+                                          }}
+                                          className="text-xs text-slate-455 hover:text-red-500 font-bold hover:underline cursor-pointer"
+                                        >
+                                          Soft Delete
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               ))
                             ) : (
-                              <p className="text-slate-450 italic">No test scorecards recorded.</p>
+                              <p className="text-slate-450 italic">No scorecard assessments found.</p>
+                            )}
+                          </div>
+
+                          {/* Generated Mock Tests */}
+                          <div>
+                            <h5 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider mb-2">Generated Mock Tests</h5>
+                            {userDetail.mock_tests && userDetail.mock_tests.length > 0 ? (
+                              userDetail.mock_tests.map(mt => (
+                                <div key={mt.id} className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-850 mb-2">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                                      <FiFileText className="text-orange-500" /> {mt.domain}
+                                    </span>
+                                    <span className="px-2 py-0.5 bg-slate-100 rounded-full text-[9px] uppercase font-bold text-slate-500">
+                                      {mt.category} - {mt.difficulty}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 font-semibold mt-1">Questions Count: {mt.questions_count} items</p>
+                                  <p className="text-[10px] text-slate-400 font-semibold">Created: {new Date(mt.created_at).toLocaleDateString()}</p>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-slate-455 italic">No mock tests created yet.</p>
                             )}
                           </div>
 
@@ -934,7 +1441,7 @@ export default function UsersTable({
                             <h5 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider mb-2">Adaptive Interview Sessions</h5>
                             {userDetail.interviews && userDetail.interviews.length > 0 ? (
                               userDetail.interviews.map(iv => (
-                                <div key={iv.id} className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-850 mb-2 space-y-2">
+                                <div key={iv.id} className="bg-slate-50/50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/40 dark:border-slate-850 mb-2 space-y-2 shadow-xs">
                                   <div className="flex justify-between items-center">
                                     <span className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                                       <FiMessageSquare className="text-blue-500" /> {iv.role}
@@ -950,6 +1457,52 @@ export default function UsersTable({
                                       <p className="mt-1">{iv.evaluation.overall_feedback || iv.evaluation.feedback || 'Incomplete session'}</p>
                                     </div>
                                   )}
+
+                                  {/* Soft delete controls */}
+                                  <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 dark:border-slate-800 mt-2">
+                                    <div>
+                                      {iv.is_deleted ? (
+                                        <span className="px-2 py-0.5 rounded bg-red-50 text-red-500 text-[8px] font-bold">Soft Deleted</span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[8px] font-bold">Active</span>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      {iv.is_deleted ? (
+                                        <>
+                                          <button
+                                            onClick={() => handleRestoreRecord('interviewsession', iv.id)}
+                                            className="text-xs text-blue-500 hover:text-blue-600 font-bold hover:underline cursor-pointer"
+                                          >
+                                            Restore
+                                          </button>
+                                          <button
+                                            onClick={() => handleHardDeleteRecord('interviewsession', iv.id)}
+                                            className="text-xs text-red-500 hover:text-red-650 font-bold hover:underline cursor-pointer"
+                                          >
+                                            Hard Delete
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          onClick={async () => {
+                                            const ok = await confirm({
+                                              title: 'Soft Delete Interview',
+                                              message: 'Are you sure you want to soft delete this mock interview session?',
+                                              type: 'delete'
+                                            });
+                                            if (ok) {
+                                              await apiClient.delete(`/api/assessments/interviews/delete/${iv.id}/`);
+                                              queryClient.invalidateQueries(['adminUserDetail', selectedUserId]);
+                                            }
+                                          }}
+                                          className="text-xs text-slate-455 hover:text-red-500 font-bold hover:underline cursor-pointer"
+                                        >
+                                          Soft Delete
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               ))
                             ) : (
@@ -1072,6 +1625,21 @@ export default function UsersTable({
                       <option value="admin">Administrator</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Reset Password (disabled due to missing backend support) */}
+                <div className="space-y-1.5">
+                  <label className="text-slate-400 dark:text-slate-500 uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                    Security Controls
+                  </label>
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-850 text-slate-400 dark:text-slate-500 font-bold text-center cursor-not-allowed select-none"
+                    title="Password Reset API support is currently not implemented in the backend"
+                  >
+                    Reset User Password (Disabled - API Missing)
+                  </button>
                 </div>
 
                 <div className="flex gap-3 justify-end pt-3 border-t border-slate-100 dark:border-slate-850">

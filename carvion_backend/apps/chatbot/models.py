@@ -1,8 +1,9 @@
 import datetime
 from mongoengine import Document, ReferenceField, ListField, DictField, DateTimeField, StringField
 from apps.authentication.models import User
+from common.soft_delete_base import SoftDeleteDocument
 
-class ChatSession(Document):
+class ChatSession(SoftDeleteDocument):
     """
     MongoEngine Chat Session Document.
     Tracks persistent career guidance conversation transcripts for the user.

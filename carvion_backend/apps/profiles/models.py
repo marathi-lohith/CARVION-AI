@@ -1,6 +1,7 @@
 import datetime
 from mongoengine import Document, ReferenceField, StringField, ListField, DateTimeField, IntField, DictField
 from apps.authentication.models import User
+from common.soft_delete_base import SoftDeleteDocument
 
 class Profile(Document):
     """
@@ -29,24 +30,31 @@ class Profile(Document):
     updated_at = DateTimeField(default=datetime.datetime.utcnow)
 
 
-class ContactMessage(Document):
+class ContactMessage(SoftDeleteDocument):
     """
     Saves user support contact requests from the Help & Contact page.
     """
     meta = {
         'collection': 'contact_messages',
         'indexes': [
-            '-created_at'
+            '-created_at',
+            'user'
         ]
     }
+    user = ReferenceField(User, null=True, reverse_delete_rule=2)
     name = StringField(required=True, max_length=100)
     email = StringField(required=True, max_length=100)
     subject = StringField(required=True, max_length=200)
     message = StringField(required=True, max_length=2000)
+    status = StringField(default="new", max_length=50) # new, open, waiting_for_user, in_progress, resolved, closed, archived
+    priority = StringField(default="medium", max_length=50) # low, medium, high
+    admin_notes = StringField(default="", max_length=2000)
+    conversation = ListField(DictField(), default=list)
     created_at = DateTimeField(default=datetime.datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.datetime.utcnow)
 
 
-class CustomSkillGapHistory(Document):
+class CustomSkillGapHistory(SoftDeleteDocument):
     """
     Saves historical custom manual skill gap analysis results for the user.
     """
@@ -67,7 +75,7 @@ class CustomSkillGapHistory(Document):
     created_at = DateTimeField(default=datetime.datetime.utcnow)
 
 
-class UserActivityLog(Document):
+class UserActivityLog(SoftDeleteDocument):
     """
     Chronologically tracks user actions and system audits across all modules.
     Reuses existing architecture and collections.

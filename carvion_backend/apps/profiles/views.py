@@ -1,4 +1,5 @@
 import logging
+import datetime
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -323,14 +324,147 @@ def contact_message_view(request):
         return Response({"success": False, "error": {"message": "All fields are required."}}, status=status.HTTP_400_BAD_REQUEST)
         
     msg = ContactMessage(
+        user=request.user,
         name=name,
         email=email,
         subject=subject,
-        message=message
+        message=message,
+        conversation=[{
+            "sender": "user",
+            "sender_name": name,
+            "message": message,
+            "created_at": datetime.datetime.utcnow().isoformat()
+        }]
     )
     msg.save()
     logger.info("New support message submitted by user: %s (Email: %s)", name, email)
+    
+    try:
+        from apps.profiles.models import UserActivityLog
+        UserActivityLog.objects.create(
+            user=request.user,
+            module="contact_messages",
+            activity_type="ticket_created",
+            description=f"User created support ticket '{msg.id}' with subject '{subject}'.",
+            status="success"
+        )
+    except Exception as log_err:
+        logger.error("Failed to write ticket created audit log: %s", str(log_err))
+        
     return Response({"success": True})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def user_tickets_list_view(request):
+    """
+    GET: Retrieve list of all tickets submitted by the authenticated user.
+    """
+    try:
+        from apps.profiles.models import ContactMessage
+        tickets = ContactMessage.objects(user=request.user, is_deleted__ne=True).order_by("-created_at")
+        data = []
+        for t in tickets:
+            data.append({
+                "id": str(t.id),
+                "subject": t.subject,
+                "status": t.status,
+                "priority": t.priority,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "updated_at": t.updated_at.isoformat() if t.updated_at else None
+            })
+        return Response({"success": True, "data": data})
+    except Exception as exc:
+        logger.error("Failed to query user tickets: %s", str(exc))
+        return Response({"success": False, "error": {"message": "Failed to retrieve tickets."}}, status=500)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def user_ticket_detail_view(request, ticket_id):
+    """
+    GET: Retrieve full details and conversation thread of a specific ticket.
+    """
+    try:
+        from apps.profiles.models import ContactMessage
+        from bson import ObjectId
+        if not ObjectId.is_valid(ticket_id):
+            return Response({"success": False, "error": {"message": "Invalid ticket ID."}}, status=400)
+            
+        ticket = ContactMessage.objects(id=ticket_id, user=request.user, is_deleted__ne=True).first()
+        if not ticket:
+            return Response({"success": False, "error": {"message": "Ticket not found."}}, status=404)
+            
+        data = {
+            "id": str(ticket.id),
+            "name": ticket.name,
+            "email": ticket.email,
+            "subject": ticket.subject,
+            "message": ticket.message,
+            "status": ticket.status,
+            "priority": ticket.priority,
+            "conversation": ticket.conversation or [],
+            "created_at": ticket.created_at.isoformat() if ticket.created_at else None,
+            "updated_at": ticket.updated_at.isoformat() if ticket.updated_at else None
+        }
+        return Response({"success": True, "data": data})
+    except Exception as exc:
+        logger.error("Failed to fetch user ticket detail: %s", str(exc))
+        return Response({"success": False, "error": {"message": "Failed to fetch ticket."}}, status=500)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def user_ticket_reply_view(request, ticket_id):
+    """
+    POST: Append user reply to conversation thread.
+    """
+    try:
+        from apps.profiles.models import ContactMessage
+        from bson import ObjectId
+        if not ObjectId.is_valid(ticket_id):
+            return Response({"success": False, "error": {"message": "Invalid ticket ID."}}, status=400)
+            
+        ticket = ContactMessage.objects(id=ticket_id, user=request.user, is_deleted__ne=True).first()
+        if not ticket:
+            return Response({"success": False, "error": {"message": "Ticket not found."}}, status=404)
+            
+        reply_text = request.data.get("message", "").strip()
+        if not reply_text:
+            return Response({"success": False, "error": {"message": "Message content cannot be empty."}}, status=400)
+            
+        new_reply = {
+            "sender": "user",
+            "sender_name": request.user.name or ticket.name,
+            "message": reply_text,
+            "created_at": datetime.datetime.utcnow().isoformat()
+        }
+        
+        if not ticket.conversation:
+            ticket.conversation = []
+        ticket.conversation.append(new_reply)
+        
+        # Update status to open
+        ticket.status = "open"
+        ticket.updated_at = datetime.datetime.utcnow()
+        ticket.save()
+        
+        try:
+            from apps.profiles.models import UserActivityLog
+            UserActivityLog.objects.create(
+                user=request.user,
+                module="contact_messages",
+                activity_type="user_reply",
+                description=f"User replied to support ticket '{ticket_id}'.",
+                status="success"
+            )
+        except Exception:
+            pass
+
+        return Response({"success": True, "message": "Reply sent successfully."})
+    except Exception as exc:
+        logger.error("Failed user reply submission: %s", str(exc))
+        return Response({"success": False, "error": {"message": "Failed to post reply."}}, status=500)
 
 
 def generate_skill_gap_insights(target_role, current_skills, experience_level, preferred_industry="Technology"):
@@ -472,7 +606,7 @@ def custom_skill_gap_analyzer_view(request):
 @permission_classes([IsAuthenticated])
 def custom_skill_gap_history_list_view(request):
     """GET: Retrieve custom manual skill gap history list for the user."""
-    history = CustomSkillGapHistory.objects(user=request.user).order_by("-created_at")
+    history = CustomSkillGapHistory.objects(user=request.user, is_deleted=False).order_by("-created_at")
     serializer = CustomSkillGapHistorySerializer(history, many=True)
     return Response({
         "success": True,
@@ -489,8 +623,9 @@ def custom_skill_gap_history_delete_view(request, history_id):
         if not ObjectId.is_valid(history_id):
             raise BadRequest("Invalid history record ID.")
         
-        record = CustomSkillGapHistory.objects.get(id=history_id, user=request.user)
-        record.delete()
+        record = CustomSkillGapHistory.objects.get(id=history_id, user=request.user, is_deleted=False)
+        from common.soft_delete_service import soft_delete
+        soft_delete(record, request.user)
         return Response({
             "success": True,
             "message": "History record deleted successfully."
@@ -504,7 +639,10 @@ def custom_skill_gap_history_delete_view(request, history_id):
 def custom_skill_gap_history_delete_all_view(request):
     """DELETE: Delete all manual skill gap analysis history for the user."""
     try:
-        CustomSkillGapHistory.objects(user=request.user).delete()
+        from common.soft_delete_service import soft_delete
+        records = CustomSkillGapHistory.objects(user=request.user, is_deleted=False)
+        for record in records:
+            soft_delete(record, request.user)
         return Response({
             "success": True,
             "message": "All manual analysis history deleted successfully."
@@ -524,7 +662,7 @@ def user_activity_history_view(request):
     events = []
 
     # 1. Fetch UserActivityLogs
-    logs = UserActivityLog.objects(user=user).order_by("-created_at")
+    logs = UserActivityLog.objects(user=user, is_deleted=False).order_by("-created_at")
     for log in logs:
         events.append({
             "id": str(log.id),
@@ -537,7 +675,7 @@ def user_activity_history_view(request):
         })
 
     # 2. Fetch Resumes
-    resumes = Resume.objects(user=user)
+    resumes = Resume.objects(user=user, is_deleted=False)
     for res in resumes:
         events.append({
             "id": str(res.id),
@@ -550,7 +688,7 @@ def user_activity_history_view(request):
         })
 
     # 3. Fetch ResumeOptimizations
-    opts = ResumeOptimization.objects(user=user)
+    opts = ResumeOptimization.objects(user=user, is_deleted=False)
     for opt in opts:
         events.append({
             "id": str(opt.id),
@@ -563,7 +701,7 @@ def user_activity_history_view(request):
         })
 
     # 4. Fetch CoverLetters
-    cls = CoverLetter.objects(user=user)
+    cls = CoverLetter.objects(user=user, is_deleted=False)
     for cl in cls:
         events.append({
             "id": str(cl.id),
@@ -615,7 +753,7 @@ def user_activity_history_view(request):
         })
 
     # 8. Fetch ChatSessions
-    chats = ChatSession.objects(user=user)
+    chats = ChatSession.objects(user=user, is_deleted=False)
     for cs in chats:
         events.append({
             "id": str(cs.id),
@@ -628,7 +766,7 @@ def user_activity_history_view(request):
         })
 
     # 9. Fetch CustomSkillGapHistory
-    gaps = CustomSkillGapHistory.objects(user=user)
+    gaps = CustomSkillGapHistory.objects(user=user, is_deleted=False)
     for gap in gaps:
         events.append({
             "id": str(gap.id),
@@ -668,7 +806,7 @@ def user_activity_history_view(request):
         })
 
     # 12. Fetch Notifications
-    notifications = Notification.objects(user=user)
+    notifications = Notification.objects(user=user, is_deleted=False)
     for nt in notifications:
         events.append({
             "id": str(nt.id),

@@ -34,7 +34,7 @@ def generate_mock_test_with_gemini(user, domain: str, difficulty: str, category:
     from apps.recommendations.services.recommendation_engine import calculate_missing_skills
     missing_skills = calculate_missing_skills(user)
 
-    past_scorecards = Scorecard.objects(user=user).order_by("-created_at")[:5]
+    past_scorecards = Scorecard.objects(user=user, is_deleted=False).order_by("-created_at")[:5]
     past_attempts = []
     past_served = []
     past_mistakes = []

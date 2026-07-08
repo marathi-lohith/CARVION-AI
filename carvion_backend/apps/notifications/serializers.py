@@ -9,6 +9,10 @@ class NotificationSerializer(serializers.Serializer):
     title = serializers.CharField()
     message = serializers.CharField()
     is_read = serializers.BooleanField()
+    priority = serializers.CharField()
+    source_module = serializers.CharField()
+    payload = serializers.DictField()
+    read_at = serializers.DateTimeField(required=False, allow_null=True)
     created_at = serializers.DateTimeField()
 
     def get_id(self, obj):

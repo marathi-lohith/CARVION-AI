@@ -7,7 +7,7 @@ import {
   FiSliders, FiUsers, FiArrowLeft, FiShield,
   FiFileText, FiBriefcase, FiBookOpen, FiAward,
   FiCpu, FiBarChart2, FiLayers, FiMail, FiBell,
-  FiSettings, FiActivity, FiSun, FiMoon,
+  FiSettings, FiActivity, FiSun, FiMoon, FiTool,
   FiChevronLeft, FiChevronRight, FiTrash2, FiCheck, FiAlertCircle, FiLogOut
 } from 'react-icons/fi';
 import { ROUTES } from '../../config/constants.js';
@@ -63,12 +63,12 @@ export default function AdminLayout() {
     { name: 'Dashboard', path: '/admin?module=dashboard', id: 'dashboard', icon: <FiSliders className="w-4.5 h-4.5" /> },
     { name: 'User Management', path: '/admin?module=users', id: 'users', icon: <FiUsers className="w-4.5 h-4.5" /> },
     { name: 'Resume Management', path: '/admin?module=resumes', id: 'resumes', icon: <FiFileText className="w-4.5 h-4.5" /> },
-    { name: 'Job Management', path: '/admin?module=jobs', id: 'jobs', icon: <FiBriefcase className="w-4.5 h-4.5" /> },
+    { name: 'Career Management', path: '/admin?module=jobs', id: 'jobs', icon: <FiBriefcase className="w-4.5 h-4.5" /> },
     { name: 'Learning Management', path: '/admin?module=learning', id: 'learning', icon: <FiBookOpen className="w-4.5 h-4.5" /> },
     { name: 'Assessment Management', path: '/admin?module=assessments', id: 'assessments', icon: <FiAward className="w-4.5 h-4.5" /> },
     { name: 'AI Management', path: '/admin?module=ai', id: 'ai', icon: <FiCpu className="w-4.5 h-4.5" /> },
     { name: 'Analytics', path: '/admin?module=analytics', id: 'analytics', icon: <FiBarChart2 className="w-4.5 h-4.5" /> },
-    { name: 'Content Management', path: '/admin?module=content', id: 'content', icon: <FiLayers className="w-4.5 h-4.5" /> },
+    { name: 'System Maintenance', path: '/admin?module=content', id: 'content', icon: <FiTool className="w-4.5 h-4.5" /> },
     { name: 'Contact Messages', path: '/admin?module=contact_messages', id: 'contact_messages', icon: <FiMail className="w-4.5 h-4.5" /> },
     { name: 'Notifications', path: '/admin?module=notifications', id: 'notifications', icon: <FiBell className="w-4.5 h-4.5" /> },
     { name: 'Settings', path: '/admin?module=settings', id: 'settings', icon: <FiSettings className="w-4.5 h-4.5" /> },

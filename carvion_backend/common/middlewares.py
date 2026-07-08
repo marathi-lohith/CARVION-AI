@@ -90,3 +90,60 @@ class GlobalExceptionMiddleware(MiddlewareMixin):
             },
             status=500
         )
+
+
+class MaintenanceModeMiddleware(MiddlewareMixin):
+    """
+    Middleware to intercept non-admin requests when maintenance mode is active.
+    Permits public authentication and static assets, and allows logged-in admins to pass.
+    """
+    def process_request(self, request):
+        try:
+            from apps.admin.models import SystemConfig
+            config = SystemConfig.get_settings()
+        except Exception:
+            return None
+
+        if config.enable_maintenance_mode:
+            path = request.path
+            
+            # Allow static files and authentication routes
+            if path.startswith("/static/") or path.startswith("/media/"):
+                return None
+            if any(x in path for x in ["/auth/login/", "/auth/admin-login/", "/auth/logout/", "/auth/refresh/"]):
+                return None
+                
+            # Allow access if the user is authenticated as an admin
+            from common.utils import parse_http_only_cookies, decode_jwt
+            from django.conf import settings
+            import jwt
+            
+            is_admin = False
+            access_token, _ = parse_http_only_cookies(request)
+            if access_token:
+                try:
+                    payload = decode_jwt(access_token, settings.JWT_ACCESS_SECRET)
+                    user_id = payload.get("user_id")
+                    if user_id:
+                        from apps.authentication.models import User
+                        user = User.objects(id=user_id).first()
+                        if user and user.role == "admin":
+                            is_admin = True
+                except Exception:
+                    pass
+                    
+            if is_admin:
+                return None
+                
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": {
+                        "message": getattr(config, "maintenance_message", None) or "System settings are undergoing administrative adjustments.",
+                        "code": "MaintenanceMode",
+                        "estimated_completion": getattr(config, "estimated_completion_time", None) or "TBD"
+                    }
+                },
+                status=503
+            )
+        return None

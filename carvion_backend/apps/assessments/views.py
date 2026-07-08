@@ -20,7 +20,7 @@ logger = logging.getLogger("carvion.api")
 @permission_classes([IsAuthenticated])
 def scorecard_history_view(request):
     """GET: Retrieve historical list of scorecards for the user."""
-    scorecards = Scorecard.objects(user=request.user).order_by("-created_at")
+    scorecards = Scorecard.objects(user=request.user, is_deleted=False).order_by("-created_at")
     serializer = ScorecardSerializer(scorecards, many=True)
     return Response({
         "success": True,
@@ -110,7 +110,7 @@ def mock_test_submit_view(request, test_id):
 def scorecard_detail_view(request, scorecard_id):
     """GET: Retrieve details of a specific scorecard."""
     try:
-        scorecard = Scorecard.objects.get(id=scorecard_id, user=request.user)
+        scorecard = Scorecard.objects.get(id=scorecard_id, user=request.user, is_deleted=False)
     except Scorecard.DoesNotExist:
         raise NotFound("Requested scorecard not found.")
 
@@ -125,8 +125,9 @@ def scorecard_detail_view(request, scorecard_id):
 def scorecard_delete_view(request, scorecard_id):
     """DELETE: Remove an individual scorecard report from history."""
     try:
-        scorecard = Scorecard.objects.get(id=scorecard_id, user=request.user)
-        scorecard.delete()
+        scorecard = Scorecard.objects.get(id=scorecard_id, user=request.user, is_deleted=False)
+        from common.soft_delete_service import soft_delete
+        soft_delete(scorecard, request.user)
         return Response({"success": True, "message": "Scorecard report deleted successfully."})
     except Scorecard.DoesNotExist:
         raise NotFound("Requested scorecard not found.")
@@ -136,7 +137,7 @@ def scorecard_delete_view(request, scorecard_id):
 @permission_classes([IsAuthenticated])
 def list_interviews_view(request):
     """GET: Retrieve past mock interview sessions for the current user."""
-    sessions = InterviewSession.objects(user=request.user).order_by("-created_at")
+    sessions = InterviewSession.objects(user=request.user, is_deleted=False).order_by("-created_at")
     serializer = InterviewSessionSerializer(sessions, many=True)
     return Response({
         "success": True,
@@ -232,7 +233,7 @@ def respond_interview_view(request, session_id):
     import json
     import datetime
     try:
-        session = InterviewSession.objects.get(id=session_id, user=request.user)
+        session = InterviewSession.objects.get(id=session_id, user=request.user, is_deleted=False)
     except InterviewSession.DoesNotExist:
         raise NotFound("Interview session not found.")
 
@@ -415,8 +416,9 @@ def respond_interview_view(request, session_id):
 def delete_interview_view(request, session_id):
     """DELETE: Remove an individual mock interview history session."""
     try:
-        session = InterviewSession.objects.get(id=session_id, user=request.user)
-        session.delete()
+        session = InterviewSession.objects.get(id=session_id, user=request.user, is_deleted=False)
+        from common.soft_delete_service import soft_delete
+        soft_delete(session, request.user)
         return Response({"success": True, "message": "Interview session deleted."})
     except InterviewSession.DoesNotExist:
         raise NotFound("Interview session not found.")
@@ -426,7 +428,10 @@ def delete_interview_view(request, session_id):
 @permission_classes([IsAuthenticated])
 def delete_all_interviews_view(request):
     """DELETE: Wipe mock interview history sessions for the user."""
-    InterviewSession.objects(user=request.user).delete()
+    from common.soft_delete_service import soft_delete
+    sessions = InterviewSession.objects(user=request.user, is_deleted=False)
+    for session in sessions:
+        soft_delete(session, request.user)
     return Response({"success": True, "message": "All interview sessions deleted."})
 
 

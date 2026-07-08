@@ -18,6 +18,11 @@ class MongoJWTAuthentication(BaseAuthentication):
         return 'Bearer'
 
     def authenticate(self, request):
+        # Bypass authentication validation for public endpoints to prevent stale/invalid cookies from blocking requests
+        path = request.path_info
+        if path in ['/api/auth/login/', '/api/auth/register/', '/api/auth/google/', '/api/auth/refresh/']:
+            return None
+
         access_token, _ = parse_http_only_cookies(request)
         if not access_token:
             return None  # Let other authentication classes try, or fall back to default
