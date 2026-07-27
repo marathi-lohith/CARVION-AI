@@ -5,7 +5,8 @@ from apps.learning.views import (
     delete_roadmap_view, track_learning_activity_view, learning_analytics_view,
     track_learning_pulse_view, track_video_watch_view,
     track_learning_session_start_view, track_learning_session_update_view,
-    roadmap_analytics_view, track_roadmap_video_progress_view
+    roadmap_analytics_view, track_roadmap_video_progress_view,
+    learning_progress_analytics_view
 )
 
 urlpatterns = [
@@ -14,6 +15,7 @@ urlpatterns = [
     path("regenerate/", regenerate_roadmap_view, name="regenerate_roadmap"),
     path("node/<str:node_id>/toggle/", toggle_node_completion_view, name="toggle_node"),
     path("progress/", learning_progress_view, name="learning_progress"),
+    path("progress-analytics/", learning_progress_analytics_view, name="learning_progress_analytics"),
     path("all/", roadmap_list_view, name="roadmap_list"),
     path("<str:roadmap_id>/select/", select_active_roadmap_view, name="select_active_roadmap"),
     path("<str:roadmap_id>/delete/", delete_roadmap_view, name="delete_roadmap"),

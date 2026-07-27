@@ -544,9 +544,59 @@ def learning_progress_view(request):
     """
     GET: Retrieve user progress analytics on active career milestones.
     """
+    from apps.learning.models import Roadmap, LearningSession
+    
     roadmap = Roadmap.objects(user=request.user, is_active=True, is_deleted=False).first()
     if not roadmap:
         roadmap = Roadmap.objects(user=request.user, is_deleted=False).first()
+
+    # Calculate streak, total_hours, weekly charts from LearningSession
+    video_sessions = list(LearningSession.objects(user=request.user, activity_type='Video', is_deleted=False))
+    total_seconds = sum(s.duration for s in video_sessions)
+    total_minutes = round(total_seconds / 60)
+    total_hours = round(total_minutes / 60, 1)
+
+    # Learning Days: unique calendar days where user watched videos (duration > 0)
+    video_sessions_with_watch = LearningSession.objects(
+        user=request.user,
+        activity_type='Video',
+        duration__gt=0,
+        is_deleted=False
+    )
+    study_dates = {s.date for s in video_sessions_with_watch if s.date}
+
+    # Calculate streak
+    streak = 0
+    today = datetime.datetime.utcnow().date()
+    today_str = today.strftime("%Y-%m-%d")
+    yesterday_str = (today - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    
+    if today_str in study_dates:
+        check_date = today
+    elif yesterday_str in study_dates:
+        check_date = today - datetime.timedelta(days=1)
+    else:
+        check_date = None
+
+    if check_date:
+        while check_date.strftime("%Y-%m-%d") in study_dates:
+            streak += 1
+            check_date -= datetime.timedelta(days=1)
+
+    # Helper function to get study minutes for a date
+    def get_daily_minutes(date_str):
+        sessions = LearningSession.objects(user=request.user, date=date_str, activity_type='Video', is_deleted=False)
+        seconds = sum(s.duration for s in sessions)
+        return round(seconds / 60)
+
+    # Weekly data: last 7 days
+    weekly_labels = []
+    weekly_minutes = []
+    for i in range(6, -1, -1):
+        day = today - datetime.timedelta(days=i)
+        day_str = day.strftime("%Y-%m-%d")
+        weekly_labels.append(day.strftime("%a"))
+        weekly_minutes.append(get_daily_minutes(day_str))
 
     if not roadmap or not roadmap.milestones:
         return Response({
@@ -557,7 +607,19 @@ def learning_progress_view(request):
                 "completed_count": 0,
                 "total_count": 0,
                 "percentage": 0,
-                "milestones": []
+                "milestones": [],
+                "summary": {
+                    "completion_rate": 0,
+                    "total_milestones": 0,
+                    "streak": streak,
+                    "total_hours": total_hours,
+                },
+                "charts": {
+                    "weekly": {
+                        "labels": weekly_labels,
+                        "data": weekly_minutes
+                    }
+                }
             }
         })
     
@@ -573,7 +635,19 @@ def learning_progress_view(request):
             "completed_count": completed,
             "total_count": total,
             "percentage": percentage,
-            "milestones": roadmap.milestones
+            "milestones": roadmap.milestones,
+            "summary": {
+                "completion_rate": percentage,
+                "total_milestones": completed,
+                "streak": streak,
+                "total_hours": total_hours,
+            },
+            "charts": {
+                "weekly": {
+                    "labels": weekly_labels,
+                    "data": weekly_minutes
+                }
+            }
         }
     })
 
@@ -971,7 +1045,13 @@ def track_learning_session_start_view(request):
         end_time=now,
         duration=0,
         completion_percentage=0,
-        date=today_str
+        date=today_str,
+        # Initialize validation audit fields
+        watch_duration=0,
+        total_video_duration=0,
+        progress_percentage=0,
+        last_watched_at=now,
+        completed=False
     )
     session.save()
     
@@ -1015,6 +1095,13 @@ def track_learning_session_update_view(request):
     session.completion_percentage = completion_percentage
     session.end_time = now
     session.updated_at = now
+    
+    # Update validation fields for audit compatibility
+    session.watch_duration = watched_duration
+    session.progress_percentage = completion_percentage
+    session.last_watched_at = now
+    if completion_percentage >= 80:
+        session.completed = True
     session.save()
     
     # Recalculate daily minutes studied and sync to LearningActivity
@@ -1344,10 +1431,16 @@ def track_roadmap_video_progress_view(request):
         )
         
     progress.last_position = last_position
-    progress.percentage_watched = max(progress.percentage_watched, percentage_watched)
-    progress.total_minutes_watched += watch_time_delta / 60.0
+    progress.percentage_watched = max(progress.percentage_watched or 0, percentage_watched)
+    progress.total_minutes_watched = (progress.total_minutes_watched or 0.0) + (watch_time_delta / 60.0)
     progress.watch_end_time = now
     progress.updated_at = now
+    
+    # Update new fields on RoadmapVideoProgress
+    progress.watch_duration = (progress.watch_duration or 0) + watch_time_delta
+    progress.total_video_duration = duration
+    progress.progress_percentage = progress.percentage_watched
+    progress.last_watched_at = now
     
     newly_completed_video = False
     if progress.percentage_watched >= 95 and not progress.completed:
@@ -1370,9 +1463,17 @@ def track_roadmap_video_progress_view(request):
     
     if session:
         session.duration += watch_time_delta
-        session.completion_percentage = max(session.completion_percentage, percentage_watched)
+        session.completion_percentage = max(session.completion_percentage or 0, percentage_watched)
         session.end_time = now
         session.updated_at = now
+        
+        # Update new fields on LearningSession
+        session.watch_duration = session.duration
+        session.total_video_duration = duration
+        session.progress_percentage = session.completion_percentage
+        session.last_watched_at = now
+        if session.completion_percentage >= 80:
+            session.completed = True
         session.save()
     else:
         session = LearningSession(
@@ -1385,7 +1486,13 @@ def track_roadmap_video_progress_view(request):
             end_time=now,
             duration=watch_time_delta,
             completion_percentage=percentage_watched,
-            date=today_str
+            date=today_str,
+            # Initialize new fields on LearningSession
+            watch_duration=watch_time_delta,
+            total_video_duration=duration,
+            progress_percentage=percentage_watched,
+            last_watched_at=now,
+            completed=(percentage_watched >= 80)
         )
         session.save()
         
@@ -1442,5 +1549,72 @@ def track_roadmap_video_progress_view(request):
             "progress_id": str(progress.id),
             "percentage_watched": progress.percentage_watched,
             "completed": progress.completed
+        }
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def learning_progress_analytics_view(request):
+    """
+    GET: Retrieve user video progress analytics.
+    """
+    from apps.learning.models import LearningSession
+    
+    sessions = list(LearningSession.objects(user=request.user, activity_type='Video', is_deleted=False))
+    
+    # Calculate Total watch duration (in seconds)
+    total_seconds = sum(s.watch_duration or s.duration or 0 for s in sessions)
+    
+    total_hours_watched = round(total_seconds / 3600.0, 1)
+    total_minutes_watched = round(total_seconds / 60.0)
+    
+    # Calculate unique videos watched (where cumulative watch duration >= 10 seconds)
+    video_durations = {}
+    for s in sessions:
+        if s.video_id:
+            video_durations[s.video_id] = video_durations.get(s.video_id, 0) + (s.watch_duration or s.duration or 0)
+    
+    videos_watched = sum(1 for vid, dur in video_durations.items() if dur >= 10)
+    
+    # Calculate unique videos completed (where progress_percentage or completion_percentage >= 80% or completed is true)
+    completed_videos = set()
+    for s in sessions:
+        if s.video_id and (s.completed or (s.progress_percentage or s.completion_percentage or 0) >= 80):
+            completed_videos.add(s.video_id)
+    videos_completed = len(completed_videos)
+    
+    # Calculate learning days (unique dates with video sessions)
+    learning_days_set = {s.date for s in sessions if s.date}
+    learning_days = len(learning_days_set)
+    
+    # Calculate current learning streak
+    dates = []
+    for d_str in learning_days_set:
+        try:
+            dates.append(datetime.datetime.strptime(d_str, "%Y-%m-%d").date())
+        except Exception:
+            pass
+    dates = sorted(list(set(dates)))
+    
+    today = datetime.datetime.utcnow().date()
+    yesterday = today - datetime.timedelta(days=1)
+    
+    current_learning_streak = 0
+    if today in dates or yesterday in dates:
+        check_date = today if today in dates else yesterday
+        while check_date in dates:
+            current_learning_streak += 1
+            check_date -= datetime.timedelta(days=1)
+            
+    return Response({
+        "success": True,
+        "data": {
+            "total_hours_watched": total_hours_watched,
+            "total_minutes_watched": total_minutes_watched,
+            "videos_watched": videos_watched,
+            "videos_completed": videos_completed,
+            "learning_days": learning_days,
+            "current_learning_streak": current_learning_streak
         }
     })

@@ -37,6 +37,7 @@ export function refreshRoadmap(queryClient) {
 export function refreshLearning(queryClient) {
   queryClient.invalidateQueries({ queryKey: ['learningAnalytics'] });
   queryClient.invalidateQueries({ queryKey: ['savedCourses'] });
+  queryClient.invalidateQueries({ queryKey: ['learningProgressAnalytics'] });
 }
 
 // --- Assessment ---

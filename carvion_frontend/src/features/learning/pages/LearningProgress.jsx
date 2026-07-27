@@ -85,6 +85,14 @@ export default function LearningProgress() {
     keepPreviousData: true
   });
 
+  const { data: progressAnalytics, isLoading: progressAnalyticsLoading, isError: progressAnalyticsError } = useQuery({
+    queryKey: ['learningProgressAnalytics'],
+    queryFn: async () => {
+      const response = await apiClient.get('/api/learning/progress-analytics/');
+      return response.data?.data || response.data;
+    }
+  });
+
   const { data: roadmapAnalytics, isLoading: roadmapAnalyticsLoading } = useQuery({
     queryKey: ['roadmapAnalytics', selectedRoadmapId, roadmaps, analytics],
     queryFn: async () => {
@@ -265,13 +273,14 @@ export default function LearningProgress() {
 
   const isInitialLoad = (analyticsLoading && !analytics) || 
                         (roadmapAnalyticsLoading && !roadmapAnalytics) || 
-                        (roadmapsLoading && !roadmaps);
+                        (roadmapsLoading && !roadmaps) ||
+                        (progressAnalyticsLoading && !progressAnalytics);
 
   if (isInitialLoad) {
     return <Loader skeleton={true} variant="grid" />;
   }
 
-  if (isError) {
+  if (isError || progressAnalyticsError) {
     return (
       <div className="bg-[#fafbfd] border border-[rgba(15,23,42,0.08)] p-8 rounded-2xl text-center max-w-md mx-auto my-12 shadow-sm">
         <FiAlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
@@ -285,6 +294,15 @@ export default function LearningProgress() {
 
   const summary = analytics?.summary || {};
   const charts = analytics?.charts || {};
+  
+  const stats = progressAnalytics || {
+    total_hours_watched: 0.0,
+    total_minutes_watched: 0,
+    videos_watched: 0,
+    videos_completed: 0,
+    learning_days: 0,
+    current_learning_streak: 0
+  };
 
   // Prepare chart data arrays for Course Analytics
   const weeklyData = (charts.weekly?.labels || []).map((label, i) => ({
@@ -324,12 +342,12 @@ export default function LearningProgress() {
 
         {/* Analytics Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <StatCard icon={FiClock} label="Total Hours Watched" value={`${summary.total_hours || 0} Hours`} color="orange" sub="watch duration" />
-          <StatCard icon={FiZap} label="Total Minutes Watched" value={`${summary.total_minutes || 0} Minutes`} color="amber" sub="watch duration" />
-          <StatCard icon={FiPlay} label="Videos Started" value={summary.videos_started || 0} color="rose" sub="unique videos started" />
-          <StatCard icon={FiCheckCircle} label="Videos Completed" value={summary.videos_completed || 0} color="emerald" sub="completed (80%+)" />
-          <StatCard icon={FiCalendar} label="Learning Days" value={summary.learning_days || 0} color="blue" sub="days active" />
-          <StatCard icon={FiStar} label="Current Learning Streak" value={`${summary.streak || 0}d`} color="violet" sub="consecutive days" />
+          <StatCard icon={FiClock} label="Total Hours Watched" value={`${stats.total_hours_watched || 0} Hours`} color="orange" sub="watch duration" />
+          <StatCard icon={FiZap} label="Total Minutes Watched" value={`${stats.total_minutes_watched || 0} Minutes`} color="amber" sub="watch duration" />
+          <StatCard icon={FiPlay} label="Videos Watched" value={stats.videos_watched || 0} color="rose" sub="unique videos watched" />
+          <StatCard icon={FiCheckCircle} label="Videos Completed" value={stats.videos_completed || 0} color="emerald" sub="completed (80%+)" />
+          <StatCard icon={FiCalendar} label="Learning Days" value={stats.learning_days || 0} color="blue" sub="days active" />
+          <StatCard icon={FiStar} label="Current Learning Streak" value={`${stats.current_learning_streak || 0}d`} color="violet" sub="consecutive days" />
         </div>
 
         {/* Learning Charts */}

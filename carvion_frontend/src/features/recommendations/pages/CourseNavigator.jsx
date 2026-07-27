@@ -70,7 +70,7 @@ export default function CourseNavigator() {
             Course Navigator
             {isCached && (
               <Badge variant="success" className="text-[10px] py-0.5 font-bold">
-                ⚡ CACHED
+                ⚡ Auto Generated
               </Badge>
             )}
           </h2>

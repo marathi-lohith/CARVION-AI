@@ -90,6 +90,14 @@ class LearningSession(SoftDeleteDocument):
     completion_percentage = IntField(default=0)
     roadmap_id = StringField(null=True)
     date = StringField(required=True)  # YYYY-MM-DD
+    
+    # Validation fields for analytics audit
+    watch_duration = IntField(default=0)  # in seconds
+    total_video_duration = IntField(default=0)  # in seconds
+    progress_percentage = IntField(default=0)  # 0 to 100
+    last_watched_at = DateTimeField(default=datetime.datetime.utcnow)
+    completed = BooleanField(default=False)
+    
     created_at = DateTimeField(default=datetime.datetime.utcnow)
     updated_at = DateTimeField(default=datetime.datetime.utcnow)
 
@@ -140,6 +148,12 @@ class RoadmapVideoProgress(SoftDeleteDocument):
     total_minutes_watched = FloatField(default=0.0)
     completed = BooleanField(default=False)
     completion_date = DateTimeField(null=True)
+    
+    # Validation fields for analytics audit
+    watch_duration = IntField(default=0)  # in seconds
+    total_video_duration = IntField(default=0)  # in seconds
+    progress_percentage = IntField(default=0)  # 0 to 100
+    last_watched_at = DateTimeField(default=datetime.datetime.utcnow)
     
     created_at = DateTimeField(default=datetime.datetime.utcnow)
     updated_at = DateTimeField(default=datetime.datetime.utcnow)

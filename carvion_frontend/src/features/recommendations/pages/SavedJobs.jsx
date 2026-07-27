@@ -118,7 +118,7 @@ export default function SavedJobs() {
                     onClick={() => applyMutation.mutate(job)}
                     className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-[10px] font-bold transition"
                   >
-                    Track App
+                    Apply
                   </button>
                   <button 
                     onClick={() => handleUnsave(job.job_id)}

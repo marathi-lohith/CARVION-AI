@@ -122,21 +122,33 @@ def get_dashboard_summary(user) -> dict:
         if chat_session and "messages" in chat_session:
             analytics["ai_conversations_count"] = len(chat_session["messages"])
 
-        # Interview score average
-        if analytics["mock_tests_count"] > 0:
-            scores_pipeline = [
-                {"$match": {"user": user.id}},
-                {"$group": {"_id": None, "avg_score": {"$avg": "$score"}}}
-            ]
-            avg_res = list(tests_col.aggregate(scores_pipeline))
-            if avg_res:
-                analytics["interview_score_average"] = round(avg_res[0]["avg_score"], 1)
+        # Interview score average from interview_sessions
+        interview_sessions_col = db["interview_sessions"]
+        completed_interviews = list(interview_sessions_col.find({"user": user.id, "status": "completed"}))
+        if completed_interviews:
+            scores = []
+            for iv in completed_interviews:
+                eval_data = iv.get("evaluation")
+                if eval_data and isinstance(eval_data, dict):
+                    scores.append(eval_data.get("overall_score", 0))
+            if scores:
+                analytics["interview_score_average"] = round(sum(scores) / len(scores), 1)
 
         # Completed roadmap milestones as Completed Courses
         roadmap = roadmaps_col.find_one({"user": user.id})
+        completed_milestones = 0
         if roadmap and "milestones" in roadmap:
             completed_milestones = sum(1 for m in roadmap["milestones"] if m.get("is_completed"))
             analytics["completed_courses_count"] = completed_milestones
+
+        # Real study hours from learning_sessions
+        learning_sessions_col = db["learning_sessions"]
+        sessions_cursor = learning_sessions_col.find({"user": user.id, "is_deleted": {"$ne": True}})
+        total_seconds = sum(s.get("duration", 0) for s in sessions_cursor)
+        real_learning_hours = round(total_seconds / 3600, 1)
+        if real_learning_hours > 0:
+            analytics["learning_hours"] = real_learning_hours
+        else:
             analytics["learning_hours"] = completed_milestones * 12
 
         # Skills progress calculations
@@ -179,6 +191,9 @@ def get_dashboard_summary(user) -> dict:
 
         count_by_day(resumes_col, "created_at")
         count_by_day(tests_col, "created_at")
+        
+        logs_col = db["user_activity_logs"]
+        count_by_day(logs_col, "created_at")
         
         analytics["weekly_activity"] = [
             {"day": day_name, "count": count}
