@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { FiMail } from 'react-icons/fi';
 import LoginForm from '../components/LoginForm.jsx';
 import useAuth from '../../../hooks/useAuth.js';
 import { ROUTES, ROLES } from '../../../config/constants.js';
@@ -19,14 +20,14 @@ export default function AdminLogin() {
     setLoading(true);
     setAuthError(null);
     try {
-      const loggedUser = await login(data.email, data.password, "admin");
+      const loggedUser = await login(data.usernameOrEmail, data.password, "admin");
       if (loggedUser?.role === ROLES.ADMIN) {
         navigate(from, { replace: true });
       } else {
         setAuthError("Unauthorized user role. This console is restricted to administrators.");
       }
     } catch (err) {
-      setAuthError(err.message || 'Incorrect email or password.');
+      setAuthError(err.message || 'Incorrect username, email or password.');
     } finally {
       setLoading(false);
     }
@@ -45,6 +46,9 @@ export default function AdminLogin() {
         onSubmit={handleCredentialsSubmit}
         loading={loading}
         error={authError}
+        label="Email Address"
+        placeholder="e.g. candidate@example.com"
+        icon={<FiMail className="w-4 h-4 text-slate-400" />}
       />
     </div>
   );

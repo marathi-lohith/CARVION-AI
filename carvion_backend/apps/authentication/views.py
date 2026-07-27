@@ -87,16 +87,20 @@ def login_view(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    email = serializer.validated_data["email"].lower().strip()
+    username_or_email = serializer.validated_data["username_or_email"].strip()
     password = serializer.validated_data["password"]
     portal = serializer.validated_data.get("portal", "user")
 
-    user = User.objects(email=email).first()
+    identifier = username_or_email.lower()
+    user = User.objects(username=identifier).first()
+    if not user:
+        user = User.objects(email=identifier).first()
+
     from common.utils import log_user_activity
     if not user or not user.check_password(password):
         if user:
             log_user_activity(user, "auth", "failed_login", "Failed login attempt (incorrect password)", status="failed")
-        raise AuthenticationFailed("Incorrect email or password details.")
+        raise AuthenticationFailed("Incorrect username, email or password details.")
 
     # Portal-based role enforcement
     if portal == "user" and user.role == "admin":

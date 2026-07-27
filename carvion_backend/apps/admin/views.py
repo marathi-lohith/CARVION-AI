@@ -994,6 +994,15 @@ MODEL_MAP = {
     "interview_sessions": InterviewSession
 }
 
+
+def _safe_deleted_by_email(obj):
+    try:
+        if getattr(obj, 'deleted_by', None) and obj.deleted_by:
+            return obj.deleted_by.email
+    except Exception:
+        return "Deleted Admin"
+    return None
+
 @api_view(["GET"])
 @permission_classes([IsAdminUser])
 def admin_records_list_view(request, module):
@@ -1123,7 +1132,7 @@ def admin_records_list_view(request, module):
                     "updated_at": r.updated_at.isoformat() if getattr(r, 'updated_at', None) else (r.created_at.isoformat() if r.created_at else None),
                     "is_deleted": r.is_deleted,
                     "deleted_at": r.deleted_at.isoformat() if getattr(r, 'deleted_at', None) else None,
-                    "deleted_by_email": r.deleted_by.email if getattr(r, 'deleted_by', None) and r.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(r),
                     "status": "deleted" if r.is_deleted else "active"
                 })
                 
@@ -1210,7 +1219,7 @@ def admin_records_list_view(request, module):
                     "resume_name": resume_name,
                     "is_deleted": a.is_deleted,
                     "deleted_at": a.deleted_at.isoformat() if getattr(a, 'deleted_at', None) else None,
-                    "deleted_by_email": a.deleted_by.email if getattr(a, 'deleted_by', None) and a.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(a),
                     "status": "deleted" if a.is_deleted else "active"
                 })
 
@@ -1288,7 +1297,7 @@ def admin_records_list_view(request, module):
                     "created_at": sj.created_at.isoformat() if sj.created_at else None,
                     "is_deleted": sj.is_deleted,
                     "deleted_at": sj.deleted_at.isoformat() if getattr(sj, 'deleted_at', None) else None,
-                    "deleted_by_email": sj.deleted_by.email if getattr(sj, 'deleted_by', None) and sj.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(sj),
                     "status": "deleted" if sj.is_deleted else "active"
                 })
 
@@ -1356,7 +1365,7 @@ def admin_records_list_view(request, module):
                     "created_at": ci.created_at.isoformat() if ci.created_at else None,
                     "is_deleted": ci.is_deleted,
                     "deleted_at": ci.deleted_at.isoformat() if getattr(ci, 'deleted_at', None) else None,
-                    "deleted_by_email": ci.deleted_by.email if getattr(ci, 'deleted_by', None) and ci.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(ci),
                     "status": "deleted" if ci.is_deleted else "active"
                 })
                 
@@ -1437,7 +1446,7 @@ def admin_records_list_view(request, module):
                     "updated_at": rm.updated_at,
                     "is_deleted": rm.is_deleted,
                     "deleted_at": rm.deleted_at,
-                    "deleted_by_email": rm.deleted_by.email if getattr(rm, 'deleted_by', None) and rm.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(rm),
                     "status": "deleted" if rm.is_deleted else "active"
                 })
                 
@@ -1569,7 +1578,7 @@ def admin_records_list_view(request, module):
                     "created_at": sc.created_at,
                     "is_deleted": sc.is_deleted,
                     "deleted_at": sc.deleted_at,
-                    "deleted_by_email": sc.deleted_by.email if getattr(sc, 'deleted_by', None) and sc.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(sc),
                     "status": "deleted" if sc.is_deleted else "active"
                 })
                 
@@ -1691,7 +1700,7 @@ def admin_records_list_view(request, module):
                     "created_at": s.created_at.isoformat() if s.created_at else None,
                     "is_deleted": s.is_deleted,
                     "deleted_at": s.deleted_at.isoformat() if getattr(s, 'deleted_at', None) else None,
-                    "deleted_by_email": s.deleted_by.email if getattr(s, 'deleted_by', None) and s.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(s),
                     "status": "deleted" if s.is_deleted else "active"
                 })
 
@@ -1792,7 +1801,7 @@ def admin_records_list_view(request, module):
                     "created_at": p.created_at.isoformat() if p.created_at else None,
                     "is_deleted": p.is_deleted,
                     "deleted_at": p.deleted_at.isoformat() if getattr(p, 'deleted_at', None) else None,
-                    "deleted_by_email": p.deleted_by.email if getattr(p, 'deleted_by', None) and p.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(p),
                     "status": "deleted" if p.is_deleted else "active"
                 })
                 
@@ -1857,7 +1866,7 @@ def admin_records_list_view(request, module):
                     "updated_at": s.updated_at.isoformat() if s.updated_at else None,
                     "is_deleted": s.is_deleted,
                     "deleted_at": s.deleted_at.isoformat() if getattr(s, 'deleted_at', None) else None,
-                    "deleted_by_email": s.deleted_by.email if getattr(s, 'deleted_by', None) and s.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(s),
                     "status": "deleted" if s.is_deleted else "active"
                 })
                 
@@ -1959,7 +1968,7 @@ def admin_records_list_view(request, module):
                     "created_at": o.created_at.isoformat() if o.created_at else None,
                     "is_deleted": o.is_deleted,
                     "deleted_at": o.deleted_at.isoformat() if getattr(o, 'deleted_at', None) else None,
-                    "deleted_by_email": o.deleted_by.email if getattr(o, 'deleted_by', None) and o.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(o),
                     "status": "deleted" if o.is_deleted else "active"
                 })
                 
@@ -2034,7 +2043,7 @@ def admin_records_list_view(request, module):
                     "created_at": cl.created_at.isoformat() if cl.created_at else None,
                     "is_deleted": cl.is_deleted,
                     "deleted_at": cl.deleted_at.isoformat() if getattr(cl, 'deleted_at', None) else None,
-                    "deleted_by_email": cl.deleted_by.email if getattr(cl, 'deleted_by', None) and cl.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(cl),
                     "status": "deleted" if cl.is_deleted else "active"
                 })
                 
@@ -2117,7 +2126,7 @@ def admin_records_list_view(request, module):
                     "created_at": sg.created_at,
                     "is_deleted": sg.is_deleted,
                     "deleted_at": sg.deleted_at,
-                    "deleted_by_email": sg.deleted_by.email if getattr(sg, 'deleted_by', None) and sg.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(sg),
                     "status": "deleted" if sg.is_deleted else "active"
                 })
                 
@@ -2226,7 +2235,7 @@ def admin_records_list_view(request, module):
                     "created_at": sc.created_at.isoformat() if sc.created_at else None,
                     "is_deleted": sc.is_deleted,
                     "deleted_at": sc.deleted_at.isoformat() if getattr(sc, 'deleted_at', None) else None,
-                    "deleted_by_email": sc.deleted_by.email if getattr(sc, 'deleted_by', None) and sc.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(sc),
                     "status": "deleted" if sc.is_deleted else "active"
                 })
                 
@@ -2309,7 +2318,7 @@ def admin_records_list_view(request, module):
                     "created_at": s.created_at,
                     "is_deleted": s.is_deleted,
                     "deleted_at": s.deleted_at,
-                    "deleted_by_email": s.deleted_by.email if getattr(s, 'deleted_by', None) and s.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(s),
                     "status_badge": "deleted" if s.is_deleted else "active"
                 })
                 
@@ -2407,7 +2416,7 @@ def admin_records_list_view(request, module):
                         "created_at": sc.created_at,
                         "is_deleted": sc.is_deleted,
                         "deleted_at": sc.deleted_at,
-                        "deleted_by_email": sc.deleted_by.email if getattr(sc, 'deleted_by', None) and sc.deleted_by else None,
+                        "deleted_by_email": _safe_deleted_by_email(sc),
                         "status": "deleted" if sc.is_deleted else "active"
                     })
                     
@@ -2446,7 +2455,7 @@ def admin_records_list_view(request, module):
                         "created_at": i.created_at,
                         "is_deleted": i.is_deleted,
                         "deleted_at": i.deleted_at,
-                        "deleted_by_email": i.deleted_by.email if getattr(i, 'deleted_by', None) and i.deleted_by else None,
+                        "deleted_by_email": _safe_deleted_by_email(i),
                         "status": "deleted" if i.is_deleted else "active"
                     })
                     
@@ -2538,7 +2547,7 @@ def admin_records_list_view(request, module):
                         "created_at": sc.created_at,
                         "is_deleted": sc.is_deleted,
                         "deleted_at": sc.deleted_at,
-                        "deleted_by_email": sc.deleted_by.email if getattr(sc, 'deleted_by', None) and sc.deleted_by else None,
+                        "deleted_by_email": _safe_deleted_by_email(sc),
                         "status": "deleted" if sc.is_deleted else "active"
                     })
                     
@@ -2574,7 +2583,7 @@ def admin_records_list_view(request, module):
                         "created_at": i.created_at,
                         "is_deleted": i.is_deleted,
                         "deleted_at": i.deleted_at,
-                        "deleted_by_email": i.deleted_by.email if getattr(i, 'deleted_by', None) and i.deleted_by else None,
+                        "deleted_by_email": _safe_deleted_by_email(i),
                         "status": "deleted" if i.is_deleted else "active"
                     })
                     
@@ -2644,7 +2653,7 @@ def admin_records_list_view(request, module):
                     "created_at": m.created_at.isoformat() if m.created_at else None,
                     "updated_at": m.updated_at.isoformat() if m.updated_at else None,
                     "deleted_at": m.deleted_at.isoformat() if getattr(m, 'deleted_at', None) else None,
-                    "deleted_by_email": m.deleted_by.email if getattr(m, 'deleted_by', None) and m.deleted_by else None
+                    "deleted_by_email": _safe_deleted_by_email(m)
                 })
                 
         elif module == "notifications":
@@ -2733,7 +2742,7 @@ def admin_records_list_view(request, module):
                     "created_at": n.created_at.isoformat() if n.created_at else None,
                     "is_deleted": n.is_deleted,
                     "deleted_at": n.deleted_at.isoformat() if getattr(n, 'deleted_at', None) else None,
-                    "deleted_by_email": n.deleted_by.email if getattr(n, 'deleted_by', None) and n.deleted_by else None,
+                    "deleted_by_email": _safe_deleted_by_email(n),
                     "status": "deleted" if n.is_deleted else "active"
                 })
                 

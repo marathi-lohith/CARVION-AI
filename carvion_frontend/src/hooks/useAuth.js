@@ -9,10 +9,10 @@ export default function useAuth() {
   const { user, isAuthenticated, isInitialized, error } = useSelector((state) => state.auth);
 
   // Authenticate user via login endpoint
-  const login = useCallback(async (email, password, portal = "user") => {
+  const login = useCallback(async (usernameOrEmail, password, portal = "user") => {
     dispatch(setAuthError(null));
     try {
-      const response = await apiClient.post('/api/auth/login/', { email, password, portal });
+      const response = await apiClient.post('/api/auth/login/', { username_or_email: usernameOrEmail, password, portal });
       const userData = response.data?.data || response.data;
       dispatch(setCredentials(userData));
       return userData;

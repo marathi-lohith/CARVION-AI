@@ -25,7 +25,7 @@ export default function Login() {
     setLoading(true);
     setAuthError(null);
     try {
-      const loggedUser = await login(data.email, data.password, "user");
+      const loggedUser = await login(data.usernameOrEmail, data.password, "user");
       if (loggedUser?.role === ROLES.ADMIN) {
         const target = from.startsWith('/admin') ? from : ROUTES.ADMIN;
         navigate(target, { replace: true });
@@ -35,7 +35,7 @@ export default function Login() {
         navigate(from, { replace: true });
       }
     } catch (err) {
-      setAuthError(err.message || 'Incorrect email or password.');
+      setAuthError(err.message || 'Incorrect username, email or password.');
     } finally {
       setLoading(false);
     }

@@ -31,7 +31,7 @@ class UserSerializer(serializers.Serializer):
 
 class LoginSerializer(serializers.Serializer):
     """Validates basic login payloads."""
-    email = serializers.EmailField(required=True)
+    username_or_email = serializers.CharField(required=True)
     password = serializers.CharField(required=True, write_only=True)
     portal = serializers.CharField(required=False, default="user")
 

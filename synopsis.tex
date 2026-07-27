@@ -1,0 +1,280 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{times} % For Times New Roman font style
+\usepackage{setspace} % For line spacing
+
+% Set exact margins according to the specification:
+% Left = 3.5cm, Right = 1.25cm, Top = 2.5cm, Bottom = 1.25cm
+\geometry{
+  a4paper,
+  left=3.5cm,
+  right=1.25cm,
+  top=2.5cm,
+  bottom=1.25cm
+}
+
+% Set double spacing
+\doublespacing
+
+
+\begin{document}
+
+% --- TITLE PAGE ---
+\begin{titlepage}
+\centering
+\vspace*{1.5cm}
+
+{\Large\textbf{PROJECT SYNOPSIS} \par}
+\vspace{1cm}
+
+{\Large \textbf{CARVION AI: AN AI-POWERED CAREER DEVELOPMENT PLATFORM} \par}
+\vspace{2.5cm}
+
+{\large\textit{Submitted in partial fulfilment of the requirements for the degree of} \par}
+\vspace{0.2cm}
+{\large\textbf{Master of Computer Applications / Master of Science (Computer Science)} \par}
+
+\vfill
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+\textbf{Submitted By:} & \textbf{Under the Guidance of:} \\
+Project Team / Candidate Name & Project Supervisor / Guide Name \\
+Roll/Enrollment No: [Roll Number] & Designation: [Supervisor Designation] \\
+\end{tabular}
+\end{table}
+
+\vfill
+\vspace{1cm}
+
+% \includegraphics[width=0.25\textwidth]{logo_placeholder.png} % Uncomment and replace with university logo file if required
+
+
+\vspace{1cm}
+{\large \textbf{Department of Computer Science \& Applications} \par}
+{\large \textbf{[University/Institution Name]} \par}
+{\large Academic Year: 2026 \par}
+
+\end{titlepage}
+
+\clearpage
+\pagenumbering{arabic}
+
+% --- SECTION 1: INTRODUCTION ---
+\section{Introduction}
+
+The rapid and continuous evolution of the global job market has created a significant demand for intelligent, accessible, and personalised career development tools. Job seekers today face complex, multi-dimensional challenges --- ranging from crafting resumes that pass automated screening filters to identifying precise skills required for competitive roles, and demonstrating readiness through structured interview performance. Traditional career support mechanisms, including static resume templates, generalised job boards, and one-size-fits-all guidance resources, are increasingly inadequate in addressing the nuanced and dynamic needs of modern candidates.
+
+Carvion AI is a full-stack, AI-powered career development platform designed to assist job seekers in building optimised resumes, discovering personalised career paths, and preparing for job interviews through an integrated suite of intelligent tools. The platform bridges the gap between raw candidate potential and industry readiness by combining modern web technologies with large language model capabilities.
+
+\subsection{Field of the Project}
+The project falls within the domain of \textbf{Web Application Development}, \textbf{Software Engineering}, and \textbf{Applied Artificial Intelligence (Natural Language Processing)}. It leverages generative AI capabilities for text extraction, semantic analysis, and structured content generation to deliver personal career mentoring at scale.
+
+\subsection{Technologies Used}
+The system is designed as a decoupled client-server architecture:
+\begin{itemize}
+    \item \textbf{Frontend}: Built using \textbf{React (v18)} and \textbf{Vite} for a fast, component-driven single-page application (SPA). Client-side routing is managed by \textbf{React Router DOM}, while server state is synchronised using \textbf{TanStack Query (React Query)}. All layouts, animations, and transitions are styled using custom \textbf{Vanilla CSS} (supporting light/dark modes and glassmorphic designs) to avoid heavy library dependencies.
+    \item \textbf{Backend}: Developed using \textbf{Python (v3.11)} and \textbf{Django REST Framework (DRF)} to expose a secure RESTful API. JWT authentication with token rotation is implemented using \textbf{Simple JWT}.
+    \item \textbf{Database}: A hybrid data layer is employed. \textbf{MongoDB} serves as the primary document store (accessed via \textbf{MongoEngine ODM}) to accommodate the flexible, nested JSON schemas returned by the AI services. Relational metadata, sessions, and blacklist tables are maintained using \textbf{SQLite}.
+    \item \textbf{AI Integration}: Powered by the \textbf{Google Gemini 2.5 Flash} model via the official Google Generative AI SDK. Local file parsing is performed using \textbf{PyMuPDF} (for PDF files) and \textbf{python-docx} (for Microsoft Word documents).
+\end{itemize}
+
+\subsection{Special Technical Terms}
+\begin{itemize}
+    \item \textbf{ATS (Applicant Tracking System)}: Software used by employers to scan, sort, and rank resume applications based on keywords and formatting.
+    \item \textbf{JWT (JSON Web Token)}: An open standard (RFC 7519) used for securely transmitting information between client and server as a JSON object, enabling stateless authentication.
+    \item \textbf{ODM (Object Document Mapper)}: A tool that maps document database objects (like MongoDB documents) to Python objects.
+    \item \textbf{Simple JWT \& Token Rotation}: A security mechanism where every token refresh request returns a new access and refresh token pair, invalidating the old ones to prevent replay attacks.
+    \item \textbf{Inference Latency \& Graceful Fallback}: The time taken by the AI API to return responses, and the corresponding backup mechanism that serves pre-configured default data to prevent application failure during API outages.
+\end{itemize}
+
+\clearpage
+
+% --- SECTION 2: MOTIVATION ---
+\section{Motivation}
+
+The motivation behind the development of Carvion AI is rooted in the structural inefficiencies and fragmentation characteristic of the modern job search landscape. 
+
+Firstly, candidates face the ``black box'' of automated hiring. Applicant Tracking Systems (ATS) filter out up to 75\% of resumes before they are ever read by human eyes. Standard resume-building software helps layout documents but fails to analyse the semantic quality, relevance, or formatting of the contents. This leaves job seekers stuck in a loop of silent rejections without actionable feedback on how to improve.
+
+Secondly, career preparation tools are highly fragmented. Candidates are forced to jump across multiple disconnected services: drafting resumes on one platform, looking for jobs on another, finding learning resources to bridge skill gaps on third-party sites, and practicing coding or behavioural interviews on standalone tools. This fragmentation prevents a unified career context, requiring users to repeatedly input their profiles and manually coordinate their learning paths.
+
+Thirdly, professional career coaching and mock interview training are highly effective but prohibitively expensive. They remain a privilege accessible only to a small fraction of candidates, disproportionately impacting early-career professionals and career switchers.
+
+Carvion AI was conceived to democratise access to high-quality career guidance. By integrating resume checking, automated ATS scoring, learning path generation, interactive mock interviews, and conversational chatbot support into a unified, context-aware platform, it replaces isolated, repetitive tasks with a continuous, guided career development cycle.
+
+\clearpage
+
+% --- SECTION 3: RELATED WORK ---
+\section{Related Work}
+
+The existing landscape of career development tools is dominated by single-purpose, static, or rule-based applications. Related work in this area falls into four main categories:
+
+\begin{enumerate}
+    \item \textbf{Online Resume Builders (e.g., Canva, Zety, Novoresume)}: These platforms excel at visual presentation, offering polished design templates. However, they lack an intelligence layer. They cannot read the text, determine if it aligns with industry standards, check for spelling/semantic errors, or estimate how compatible the resume is with a specific role.
+    \item \textbf{Job Search Portals (e.g., LinkedIn, Indeed, Naukri)}: These sites aggregate millions of job listings and connect employers with candidates. However, their recommendation engines are primarily keyword-based. They do not assess a candidate's readiness for a job, highlight specific skill gaps, or provide structured resources to help them prepare for application.
+    \item \textbf{Online Learning Platforms (e.g., Coursera, Udemy, edX)}: While offering massive libraries of high-quality courses, these platforms put the burden of path discovery entirely on the user. They do not dynamically map a user's current resume against their dream role to generate a custom step-by-step learning sequence.
+    \item \textbf{Interview Practice Platforms (e.g., Pramp, Interview Cake)}: These tools focus heavily on interview preparation, particularly technical questions for software engineers. However, they are isolated from the user's resume, and their feedback mechanisms are manual (peer-to-peer) or rule-based, failing to scale or customise to free-form responses.
+\end{enumerate}
+
+\subsection{Limitations of the Existing Systems:}
+\begin{itemize}
+    \item \textbf{Lack of Integration}: No shared context exists across tools, forcing users to manage separate accounts and data.
+    \item \textbf{Generality over Personalisation}: Guidance is template-driven rather than adapted to the user's individual experience.
+    \item \textbf{Absence of Scalable Feedback}: Detailed evaluation requires human intervention (coaches/peers), making it expensive and slow.
+    \item \textbf{No Governance Layer}: None of these tools provide an enterprise-grade administration console to monitor usage and user development at scale.
+\end{itemize}
+
+Carvion AI addresses these limitations by establishing a unified, context-sharing environment where the output of resume parsing directly informs both the learning roadmap and the mock interview questions, creating a customised end-to-end feedback loop.
+
+\clearpage
+
+% --- SECTION 4: FEASIBILITY STUDY ---
+\section{Feasibility Study}
+
+A feasibility study was conducted to examine the technical, operational, and economic viability of the proposed platform:
+
+\begin{itemize}
+    \item \textbf{Technical Feasibility}: The technology stack chosen for Carvion AI relies on stable, widely supported frameworks. React and Vite provide lightweight, fast frontend rendering, while Django REST Framework handles API routing, sanitisation, and security policies. The use of MongoDB (NoSQL) is technically essential because AI-generated career roadmaps and interview transcripts consist of variable, nested JSON schemas that are difficult to normalize in rigid relational databases. Google Gemini 2.5 Flash API is integrated server-side, securing API credentials from client exposure. PyMuPDF and python-docx offer robust, locally run parsing. Hence, the system is technically feasible.
+    \item \textbf{Operational Feasibility}: The platform requires minimal administrative overhead. An Enterprise Admin Console is provided to monitor system health, view user growth trends, search active accounts, broadcast alerts, and handle user feedback. Graceful AI fallbacks ensure that the application remains functional even during external API downtime, returning default feedback instead of crashing. Token rate-limiting protects endpoints from abuse. The system is intuitive for candidates and highly maintainable for administrators, verifying its operational feasibility.
+    \item \textbf{Economic Feasibility}: The development relies completely on open-source frameworks, languages, and databases, eliminating commercial software licensing costs. Operating costs are minimised by executing the AI prompts on a pay-as-you-go API model (Google Gemini), avoiding expensive local GPU infrastructure. Since the resume parser and mock interview evaluator run automatically, the platform can scale to support thousands of concurrent users without requiring human coaches. The low operational costs and high educational value demonstrate clear economic feasibility.
+\end{itemize}
+
+\clearpage
+
+% --- SECTION 5: METHODOLOGY / PLANNING OF WORK ---
+\section{Methodology / Planning of Work}
+
+The development of Carvion AI follows the \textbf{Agile Software Development Life Cycle (SDLC)}, structured in iterative sprints. This model was chosen to facilitate continuous testing, modular integration, and flexibility in response to feedback.
+
+\begin{figure}[h]
+\centering
+\begin{tabular}{|c|}
+\hline
+1. Requirements \& Analysis \\
+\hline
+$\downarrow$ \\
+\hline
+2. System Design (DFDs) \\
+\hline
+$\downarrow$ \\
+\hline
+3. Database \& API Dev \\
+\hline
+$\downarrow$ \\
+\hline
+4. Frontend \& AI Integration \\
+\hline
+$\downarrow$ \\
+\hline
+5. Testing \& Verification \\
+\hline
+$\downarrow$ \\
+\hline
+6. Maintenance \& Review \\
+\hline
+\end{tabular}
+\caption{Iterative Agile SDLC Workflow followed in Carvion AI development.}
+\label{fig:sdlc_workflow}
+\end{figure}
+
+\subsection{Development Phases:}
+\begin{enumerate}
+    \item \textbf{Requirements Analysis}: Mapping functional requirements (registration, parsing, AI analysis, mock interviews, job search, notifications, admin panel) and non-functional requirements (security, speed, rate limits).
+    \item \textbf{System Design}: Modelling the databases, drawing Entity Relationship Diagrams (ERD) for MongoDB/SQLite, and plotting Data Flow Diagrams (DFDs) from Level 0 to Level 3 to map the movement of documents.
+    \item \textbf{Database \& API Development}: Creating Django REST views, configuring simple JWT endpoints, setting up MongoEngine schemas, and writing text extraction services (PyMuPDF, python-docx).
+    \item \textbf{Frontend \& AI Integration}: Assembling React views, configuring Axios interceptors for token attachment, designing prompts for Google Gemini 2.5 Flash, and rendering interactive dashboards using Recharts.
+    \item \textbf{Testing \& Verification}: Running unit, integration, system, security, and performance test suites to verify that API responses load within 2 seconds, and AI results complete under 15 seconds.
+\end{enumerate}
+
+\clearpage
+
+% --- SECTION 6: FACILITIES REQUIRED ---
+\section{Facilities Required for Proposed Work}
+
+The development, hosting, and testing of the Carvion AI platform require the following hardware and software resources:
+
+\subsection{Hardware Requirements}
+\begin{itemize}
+    \item \textbf{Processor}: Intel Core i5 or AMD Ryzen 5 (or higher) dual-core processor.
+    \item \textbf{Memory}: Minimum 8 GB RAM (16 GB recommended for running concurrent Docker containers/servers).
+    \item \textbf{Storage}: 256 GB Solid State Drive (SSD) with at least 20 GB of free space.
+    \item \textbf{Network}: High-speed internet connection for API communication and package dependencies download.
+\end{itemize}
+
+\subsection{Software Requirements}
+\begin{itemize}
+    \item \textbf{Operating System}: Windows 10/11, macOS, or Linux (Ubuntu 20.04 LTS or later).
+    \item \textbf{Integrated Development Environment (IDE)}: Visual Studio Code or PyCharm.
+    \item \textbf{Programming Languages}: Python (v3.11+) and JavaScript (Node.js v18+).
+    \item \textbf{Web Frameworks}: Django (v4.x) with Django REST Framework, and React (v18) with Vite.
+    \item \textbf{Databases}: MongoDB (v7.x Community Server) and SQLite (v3.x).
+    \item \textbf{Libraries \& SDKs}: Google Generative AI SDK, Simple JWT, MongoEngine, PyMuPDF, python-docx, Axios, and TanStack Query.
+    \item \textbf{Testing \& API Tools}: Postman, Git version control, and standard browser developer tools (Chrome DevTools).
+\end{itemize}
+
+\clearpage
+
+% --- SECTION 7: PLAN OF WORK ---
+\section{Plan of Work}
+
+The project development is scheduled across a 4-month period, divided into monthly milestones:
+
+\begin{table}[htbp]
+\centering
+\caption{Month-wise project execution schedule.}
+\label{tab:plan_of_work}
+\begin{tabular}{p{2.5cm}p{6cm}p{5.5cm}}
+\toprule
+\textbf{Month} & \textbf{Phase / Activities} & \textbf{Deliverables} \\
+\midrule
+\textbf{Month 1} & Requirement Gathering, Literature Review, Feasibility Study, Architecture Design \& Database Modelling (ERD/DFD) & Requirements Specification Document, Technology Selection, ERD \& DFD Blueprints, UI wireframes \\
+\textbf{Month 2} & Core Backend Setup, JWT Authentication, Database Integrations, Document Parsers Implementation & Working Auth system, User Profile API, PyMuPDF and python-docx integration, basic parser testing \\
+\textbf{Month 3} & Frontend Single-Page Application Design, Gemini AI prompt engineering \& integration (ATS, Roadmaps, Mock Interview, Chatbot) & React SPA base structure, API integration services, fully functional AI modules \\
+\textbf{Month 4} & Recommendations Engine, Enterprise Admin Console, System Integration, System Testing (Unit, Integration, Security, UAT), Final Documentation & Completed job/course recommenders, Admin KPI dashboard, Test Matrix reports, final codebase, and Project Synopsis submission \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\clearpage
+
+% --- SECTION 8: BIBLIOGRAPHY ---
+\section{Bibliography}
+
+The following references and study materials were consulted during the design and development of the Carvion AI platform:
+
+\subsection{Official Documentation}
+\begin{itemize}
+    \item[{[1]}] Google DeepMind. (2024). \textit{Gemini API Documentation --- Google AI for Developers}. Google LLC. Retrieved from \url{https://ai.google.dev/gemini-api/docs}
+    \item[{[2]}] Django Software Foundation. (2024). \textit{Django Documentation --- Version 4.x}. Retrieved from \url{https://docs.djangoproject.com/en/4.2/}
+    \item[{[3]}] Tom Christie. (2024). \textit{Django REST Framework Documentation}. Retrieved from \url{https://www.django-rest-framework.org/}
+    \item[{[4]}] Jazzband. (2024). \textit{Django REST Framework Simple JWT Documentation}. Retrieved from \url{https://django-rest-framework-simplejwt.readthedocs.io/}
+    \item[{[5]}] MongoEngine Contributors. (2024). \textit{MongoEngine --- Python Document-Object Mapper for MongoDB}. Retrieved from \url{https://docs.mongoengine.org/}
+    \item[{[6]}] MongoDB, Inc. (2024). \textit{MongoDB Manual --- Version 7.0}. Retrieved from \url{https://www.mongodb.com/docs/manual/}
+    \item[{[7]}] Meta Open Source. (2024). \textit{React --- The Library for Web and Native User Interfaces}. Retrieved from \url{https://react.dev/}
+    \item[{[8]}] VoidZero Inc. (2024). \textit{Vite --- Next Generation Frontend Tooling}. Retrieved from \url{https://vitejs.dev/guide/}
+\end{itemize}
+
+\subsection{Books and Reference Materials}
+\begin{itemize}
+    \item[{[9]}] Flanagan, D. (2020). \textit{JavaScript: The Definitive Guide} (7th ed.). O'Reilly Media.
+    \item[{[10]}] Lutz, M. (2013). \textit{Learning Python} (5th ed.). O'Reilly Media.
+    \item[{[11]}] Chodorow, K. (2013). \textit{MongoDB: The Definitive Guide} (2nd ed.). O'Reilly Media.
+    \item[{[12]}] Fowler, M. (2002). \textit{Patterns of Enterprise Application Architecture}. Addison-Wesley Professional.
+    \item[{[13]}] Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994). \textit{Design Patterns: Elements of Reusable Object-Oriented Software}. Addison-Wesley Professional.
+\end{itemize}
+
+\subsection{Research Papers}
+\begin{itemize}
+    \item[{[14]}] Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., & Polosukhin, I. (2017). \textit{Attention Is All You Need}. Advances in Neural Information Processing Systems, 30. Retrieved from \url{https://arxiv.org/abs/1706.03762}
+    \item[{[15]}] Brown, T. B., et al. (2020). \textit{Language Models are Few-Shot Learners}. arXiv preprint arXiv:2005.14165. Retrieved from \url{https://arxiv.org/abs/2005.14165}
+    \item[{[16]}] OpenAI. (2023). \textit{GPT-4 Technical Report}. arXiv preprint arXiv:2303.08774. Retrieved from \url{https://arxiv.org/abs/2303.08774}
+\end{itemize}
+
+\end{document}

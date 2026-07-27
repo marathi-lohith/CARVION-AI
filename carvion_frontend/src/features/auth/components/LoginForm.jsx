@@ -1,18 +1,25 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { FiMail, FiLock } from 'react-icons/fi';
+import { FiUser, FiMail, FiLock } from 'react-icons/fi';
 import Input from '../../../components/common/Input.jsx';
 import Button from '../../../components/common/Button.jsx';
 import { FORM_VALIDATORS } from '../../../utils/validators.js';
 
-export default function LoginForm({ onSubmit, loading, error }) {
+export default function LoginForm({ 
+  onSubmit, 
+  loading, 
+  error,
+  label = "Username or Email Address",
+  placeholder = "e.g. johndoe123 or candidate@example.com",
+  icon = <FiUser className="w-4 h-4 text-slate-400" />
+}) {
   const { 
     register, 
     handleSubmit, 
     formState: { errors } 
   } = useForm({
     defaultValues: {
-      email: '',
+      usernameOrEmail: '',
       password: '',
     }
   });
@@ -26,12 +33,12 @@ export default function LoginForm({ onSubmit, loading, error }) {
       )}
 
       <Input
-        label="Email Address"
-        type="email"
-        placeholder="e.g. candidate@example.com"
-        icon={<FiMail className="w-4 h-4 text-slate-400" />}
-        error={errors.email?.message}
-        {...register('email', FORM_VALIDATORS.email)}
+        label={label}
+        type="text"
+        placeholder={placeholder}
+        icon={icon}
+        error={errors.usernameOrEmail?.message}
+        {...register('usernameOrEmail', FORM_VALIDATORS.requiredField(label))}
       />
 
       <Input

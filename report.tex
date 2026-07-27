@@ -592,6 +592,112 @@ This diagram captures the dynamic interactions and message exchanges across all 
 \end{longtable}
 
 \clearpage
+\section{Use Case Diagram}
+
+The Use Case Diagram represents the functional boundaries of the Carvion AI platform, illustrating how different actors interact with the system's capabilities.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{use_case_diagram.png}
+  \caption{UML Use Case Diagram - Carvion AI}
+\end{figure}
+
+\subsection{Actors and Use Cases}
+
+\begin{itemize}
+  \item \textbf{Candidate (Job Seeker):} The primary user who interacts with the client application to manage their career development tasks.
+  \begin{itemize}
+    \item \textbf{Register \& Login:} Enforces security boundaries and user session initialization.
+    \item \textbf{Analyze Resume \& ATS Score:} Uploads resumes for parsing, scoring, and feedback generation.
+    \item \textbf{Track Career Roadmap:} Visualizes dynamic skill milestones and progress.
+    \item \textbf{Simulate Mock Interview:} Practices role-specific Q\&A with real-time AI evaluation.
+    \item \textbf{Explore Job Openings:} Discovers matched job opportunities and learning resources.
+    \item \textbf{Access AI Chatbot Support:} Obtains instant conversational assistance.
+  \end{itemize}
+  \item \textbf{System Administrator:} The platform operator who manages system governance and monitoring.
+  \begin{itemize}
+    \item \textbf{Manage Users:} Views and moderates standard user profiles.
+    \item \textbf{Broadcast Notifications:} Sends global alerts or target messages to users.
+    \item \textbf{Review Activity Audit Logs:} Tracks system audit logs for administrative actions.
+    \item \textbf{Monitor System Health:} Observes real-time backend and database operational KPIs.
+  \end{itemize}
+\end{itemize}
+
+\clearpage
+\section{Class Diagram}
+
+The Class Diagram illustrates the structural layout of the backend application, showing key database documents (models managed via MongoEngine) and controller classes (Django REST Framework ViewSets), including their attributes, methods, and relationships.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{class_diagram.png}
+  \caption{UML Class Diagram - Carvion AI}
+\end{figure}
+
+\subsection{Description of Core Classes}
+
+\begin{itemize}
+  \item \textbf{UserDocument:} Represents registered users. Stores the user's email, hashed password, role, active status, and timestamps.
+  \item \textbf{ProfileDocument:} Contains extended profile details for the user, including target role, skills list, phone, and professional bio. Maintains a 1:1 relationship with \texttt{UserDocument}.
+  \item \textbf{ResumeDocument:} Holds parsed resume content, ATS compatibility scores, and AI feedback. Maintains a 1:N relationship with \texttt{UserDocument}.
+  \item \textbf{BaseAPIView:} Abstract base class specifying shared controller parameters like \texttt{permission\_classes} and \texttt{authentication\_classes}.
+  \item \textbf{AuthViewSet:} Controller class handling candidate registration, login session tokens, and logout blacklisting.
+  \item \textbf{ResumeViewSet:} Handles document uploads, parsing triggers (PyMuPDF / docx), and report generation.
+  \item \textbf{RoadmapViewSet:} Coordinates personalized career roadmap generation and milestone state toggles.
+  \item \textbf{InterviewViewSet:} Manages mock interview sessions, questions list generation, and answer submissions.
+\end{itemize}
+
+\clearpage
+\section{Sequence Diagram}
+
+The Sequence Diagram details the chronological flow of messages and control transitions among active system components during the core \textbf{Resume Upload and Analysis} workflow.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{sequence_diagram.png}
+  \caption{UML Sequence Diagram - Carvion AI}
+\end{figure}
+
+\subsection{Workflow Steps}
+
+\begin{enumerate}
+  \item \textbf{Upload Request:} The Candidate submits a resume file via the React client.
+  \item \textbf{API Forwarding:} The React SPA forwards the multipart stream via an Axios POST request to the Django Backend.
+  \item \textbf{Text Extraction:} The Django Backend invokes the PyMuPDF Parser to extract the raw text content.
+  \item \textbf{Text Return:} The PyMuPDF Parser returns the raw text string to the backend.
+  \item \textbf{AI Inference:} The Backend packages the text with prompt criteria and sends an evaluation request to the Google Gemini AI API.
+  \item \textbf{Report Delivery:} The Gemini AI API parses the text semantically and returns the structured ATS Report JSON.
+  \item \textbf{Persistence:} The Django Backend saves the resume document and the AI report in MongoDB.
+  \item \textbf{Response Return:} The Backend sends a 201 Created JSON response to the React SPA, which updates the UI for the candidate.
+\end{enumerate}
+
+\clearpage
+\section{Activity Diagram}
+
+The Activity Diagram illustrates the operational logic and flow of decisions during an \textbf{Interactive Mock Interview Preparation} session.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{activity_diagram.png}
+  \caption{UML Activity Diagram - Carvion AI}
+\end{figure}
+
+\subsection{Process Execution Steps}
+
+\begin{enumerate}
+  \item \textbf{Parameters Selection:} The candidate begins by selecting their interview parameters (target role, difficulty level, and number of questions).
+  \item \textbf{Questions Generation:} The Backend makes an API call to Gemini to dynamically generate the interview questions.
+  \item \textbf{UI Rendering:} The React interface displays the current question to the candidate.
+  \item \textbf{Answer Input:} The candidate inputs their natural language response and submits it.
+  \item \textbf{Performance Evaluation:} The system sends the answer to the Gemini API for performance scoring and feedback extraction.
+  \item \textbf{Loop Decision:} The system checks if there are remaining questions in the session:
+   \begin{itemize}
+     \item If \textbf{Yes}, it moves to the next question and repeats the UI rendering step.
+     \item If \textbf{No}, it compiles the final performance scorecard, persists the session metrics, and displays the complete scorecard UI.
+   \end{itemize}
+\end{enumerate}
+
+\clearpage
 \section{System Design}
 
 The System Design of Carvion AI outlines the architectural layout, components, and data request flows that structure the platform. The application is built using a three-tier decoupled architecture:

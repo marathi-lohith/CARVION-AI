@@ -56,6 +56,93 @@ The primary objectives of the Carvion AI project are as follows:
 
 10. **To deliver a premium, accessible, and responsive user experience** that removes barriers to professional career guidance and makes AI-powered career development available to any user regardless of background or location.
 
+## Scope of the Project
+
+The scope of the Carvion AI project defines the boundaries of the system, detailing the specific functionalities, modules, and interfaces built into the platform, as well as the exclusions and future extensions that fall outside the current implementation limits.
+
+### In-Scope (Functional Boundaries)
+
+The project delivers a fully functional, production-ready career development platform divided into three main operational scopes:
+
+#### 1. Candidate Career Development Suite
+*   **Resume Intelligence Module:**
+    *   File upload capabilities supporting PDF and DOCX formats.
+    *   Text extraction via server-side libraries (PyMuPDF and python-docx).
+    *   Structured parsing of resume sections including contact details, experience, education, skills, projects, and certifications.
+    *   GenAI-powered Applicant Tracking System (ATS) compatibility analysis, scoring (0-100), and detailed feedback reports powered by Google Gemini 2.5 Flash.
+    *   Multi-resume management supporting primary document declaration.
+*   **AI Career Roadmap Engine:**
+    *   Dynamic generation of custom career development roadmaps tailored to user-specified target roles and current skill profiles.
+    *   Milestone-based learning structures featuring recommended skill sets, estimated timelines, and learning resources.
+*   **AI Mock Interview Simulator:**
+    *   Role-specific interview session generation.
+    *   Interactive text-based Q&A interface.
+    *   Post-interview evaluation scoring individual answers and providing consolidated reports covering content quality, clarity, and improvement points.
+*   **Job & Course Recommendation Engine:**
+    *   Retrieval of contextually relevant job opportunities and courses mapped to the candidate's skills and targets.
+    *   Persistence of saved listings for future user tracking.
+*   **Conversational AI Assistant:**
+    *   Embedded sidebar chatbot capable of answering career questions, clarifying resume suggestions, and facilitating general platform usage.
+
+#### 2. Enterprise Admin Console
+*   **Operational Dashboard:**
+    *   Real-time monitoring of active users, resume checks, roadmaps, and interview sessions.
+    *   Visualization of usage trends using charts (user sign-ups, AI tool utilization).
+    *   Status checks for external APIs (e.g., Google Gemini connectivity) and server systems.
+*   **User and Content Governance:**
+    *   Comprehensive user management grid supporting pagination, search filters, and status toggles (enabling/disabling users).
+    *   Inbound inquiry inbox to receive and respond to user-submitted contact queries.
+*   **System Utilities:**
+    *   Broadcast notification publisher to send system messages to specific user cohorts or the entire database.
+    *   Audit log tracking administrator activities, security events, and configuration overrides.
+    *   Platform state overrides including server cache purging and maintenance mode toggling.
+
+#### 3. Security and Architecture
+*   **Decoupled Full-Stack Architecture:** A single-page client interface built in React (Vite) interacting with a Python Django REST Framework backend.
+*   **Authentication and Access Control:** Secure JSON Web Token (JWT) workflow featuring token rotation, refresh, and blacklist mechanisms alongside role-based route protection.
+*   **Operational Resilience:** Middleware for API request throttling to prevent endpoint exhaustion, custom error fallback states for API dropouts, and size-based rotating logs.
+
+---
+
+### Out-of-Scope (Boundaries and Exclusions)
+
+To maintain a feasible development lifecycle, the following features are excluded from the current scope of the project:
+
+1.  **Direct ATS Software Integration:** The platform evaluates ATS scores locally using Gemini prompts but does not directly sync with third-party enterprise ATS systems (e.g., Workday, Taleo, Greenhouse) via their native APIs.
+2.  **Document Autorewriting:** While the platform generates comprehensive improvement suggestions, it does not edit or regenerate the uploaded PDF or DOCX file formats directly.
+3.  **Video and Audio Mock Interviews:** The mock interview simulator operates exclusively via text inputs and does not support real-time audio recording, speech-to-text transcription, or video facial expression analysis.
+4.  **In-House Content Hosting:** The career roadmap recommends external learning courses and resources, but the platform does not host native learning modules, video classes, or certification examinations.
+5.  **Direct Job Applications:** Candidates can review and save matched job listings, but the application process redirects users to the external job source rather than submitting applications on their behalf.
+6.  **Social OAuth Sign-ins:** User authentication is managed internally via secure JWT and local credentials; integration with external social providers (Google, GitHub, LinkedIn OAuth) is deferred.
+7.  **Financial Transactions:** The enterprise management layer tracks platform stats but lacks billing, subscription management, or payment gateway configurations.
+
+## Literature Survey
+
+The development of automated career assistance systems encompasses several distinct areas of computing and natural language processing: (1) resume information extraction, (2) semantic similarity and Applicant Tracking Systems (ATS) matching, (3) personalized career path recommendation, and (4) conversational AI and automated interview simulation.
+
+1. **Resume Information Extraction & Named Entity Recognition (NER)**:
+   Information extraction from resumes requires converting unstructured or semi-structured documents (such as PDF or DOCX) into structured JSON objects. Early attempts utilized heuristic pattern matching and regular expressions, which failed on non-standard layouts. Modern research transitioned to sequence labeling using deep learning. Specifically, Li et al. (2021) proposed a hybrid BERT-BiLSTM-CRF architecture for resume parsing. In this framework, Bidirectional Encoder Representations from Transformers (BERT) generate context-aware token embeddings, Bidirectional Long Short-Term Memory (BiLSTM) networks capture sequential dependencies, and Conditional Random Fields (CRF) optimize final label sequences. This sequence-labeling approach extracts entities such as candidate names, education levels, job titles, and specialized skills with high precision even across highly variable document designs.
+
+2. **ATS Compatibility & Semantic Document Similarity**:
+   Applicant Tracking Systems (ATS) historically relied on simple keyword matching, which filtered out qualified candidates who used synonyms instead of the exact terms in job descriptions. To resolve this, modern semantic matching research uses Siamese/twin-tower neural networks to encode both resumes and job descriptions into a shared high-dimensional vector space. Using pre-trained Transformer models like Sentence-BERT (SBERT), the system calculates the cosine similarity between the resume vector and the job description vector. This method captures semantic alignment (e.g., recognizing that "frontend developer" is highly similar to "React UI engineer"), allowing for robust scoring and automated feedback on content relevance without relying on rigid keyword lists.
+
+3. **Personalized Career Path & Course Recommendation**:
+   Providing career roadmap recommendations involves mapping a user's current professional profile to target roles and identifying skill gaps. Academic models formalize this using Graph Neural Networks (GNNs) or Skill Ontologies (e.g., ESCO taxonomy). By mapping skills and job roles as nodes in a graph and historical career transitions or learning paths as edges, these systems recommend intermediate milestones and curated learning resources (e.g., online courses). This enables adaptive, step-by-step career path progression rather than static, generalized templates.
+
+4. **AI-Driven Mock Interviews & Feedback Evaluation**:
+   Automated interview systems evaluate candidate preparedness by simulating natural dialogue. Researchers such as Qin et al. (2019/2023) developed techniques for automatic skill-oriented question generation. Under these frameworks, natural language generation (NLG) models analyze a candidate’s profile and target job criteria to generate custom, context-aware interview questions. When candidates provide free-form responses, natural language processing engines evaluate the content for correctness, completeness, and communication quality, returning structured feedback reports. This replaces manual or simple multiple-choice evaluations with realistic conversational testing.
+
+## Outcome of Literature Survey
+
+The primary outcomes and insights derived from the literature survey include:
+
+- **Information Extraction Reliability**: Deep learning architectures (like BiLSTM-CRF and BERT) and modern generative language models (such as Google Gemini) show high capabilities in understanding structured contexts within resumes. Generative models minimize the need for complex, locally hosted model weights, enabling highly accurate zero-shot semantic parsing and structured JSON extraction.
+- **Shift from Syntactic to Semantic Analysis**: Keyword-based resume screening has been proven ineffective and biased. Leveraging semantic vector representations or LLM-based prompting is essential to provide fair, objective, and contextually rich ATS scores and feedback.
+- **System Gaps & Fragmentation**: While individual domains (resume parsing, roadmapping, interview simulators) have been extensively researched, they are almost exclusively implemented as isolated tools in the current landscape. There is a clear gap for a unified, context-aware platform where a user's resume, roadmaps, job/course recommendations, mock interviews, and chatbot interactions share a single, cohesive professional profile.
+- **Scalability and Governance Needs**: Academic frameworks often neglect administrative and operational requirements, such as access control, platform usage auditing, and system health monitoring, which are critical for deploying these systems in institutional or enterprise settings.
+
+By synthesizing these outcomes, Carvion AI was designed to integrate resume intelligence, career pathing, mock interviews, and recommendation engines into a single, cohesive full-stack application. It replaces local, resource-intensive deep learning models with server-side Google Gemini 2.5 Flash API inference, achieving production-grade performance, low latency, and comprehensive administrative oversight through a dedicated Enterprise Admin Console.
+
 ## Existing System
 
 The existing landscape of career development tools is fragmented and largely reliant on static, non-adaptive resources. Current solutions available to job seekers typically fall into one or more of the following categories:
@@ -308,6 +395,12 @@ The development of the Carvion AI platform was structured around the Agile Softw
 
 ## Data Flow Diagrams
 
+A Data Flow Diagram (DFD) is a graphical representation of the path that data takes through an information system. In the context of the Carvion AI platform, DFDs are utilized to model how user input (such as resume files, career preferences, and interview responses) flows through various processing components, is stored in database systems, and is sent to or received from external systems like the Google Gemini API.
+
+The diagrams follow a hierarchical approach:
+*   **Level 0 (Context Diagram):** Provides a high-level overview of the entire system as a single process, highlighting the boundary of the application and its interactions with external entities (Users, Administrators, and the Gemini API).
+*   **Level 1 (Main System Processes):** Breaks down the single system process into its major functional modules (such as Authentication, Resume Analysis, Roadmap Generation, and Mock Interviews) to show how data moves internally between processes, data stores, and external entities.
+
 ### DFD Symbols
 
 | Symbol | Shape | Meaning |
@@ -445,6 +538,420 @@ This diagram captures the dynamic interactions and message exchanges across all 
 | 17 | Gemini API | Career Intelligence | Return Structured Roadmap JSON |
 | 18 | Career Intelligence | MongoDB | Save Roadmap |
 | 19 | Career Intelligence | User | Deliver Roadmap to User |
+
+## Use Case Diagram
+
+The Use Case Diagram represents the functional boundaries of the Carvion AI platform, illustrating how different actors interact with the system's capabilities.
+
+![UML Use Case Diagram](use_case_diagram.png)
+
+### Mermaid Diagram
+
+```mermaid
+flowchart TB
+    %% Actors
+    subgraph Actors
+        Candidate["👤 Candidate (Job Seeker)"]
+        Admin["⚙️ System Administrator"]
+    end
+
+    %% Platform Boundary
+    subgraph Carvion_AI_Platform ["🛡️ Carvion AI Career Development Platform"]
+        subgraph Auth_Usecases ["🔐 Authentication & Profile"]
+            UC_Auth("🔑 Register / Login / Google OAuth")
+            UC_Profile("👤 Manage Profile & Skill Gaps")
+        end
+
+        subgraph Resume_Usecases ["📄 Resume Intelligence"]
+            UC_Resume_Upload("📤 Upload Resume (PDF/DOCX)")
+            UC_ATS_Score("📊 Analyze ATS Score & Structure")
+            UC_Resume_Opt("💡 Resume Optimization & Cover Letter")
+        end
+
+        subgraph Career_Usecases ["🛣️ Learning & Career Roadmaps"]
+            UC_Gen_Roadmap("🗺️ Generate AI Career Roadmap")
+            UC_Track_Progress("📈 Track Learning & Video Progress")
+            UC_Recs("💼 Contextual Job & Course Recommendations")
+        end
+
+        subgraph Assessment_Usecases ["🎙️ Mock Interviews & Chat"]
+            UC_Mock_Interview("💬 Simulate Interactive Mock Interview")
+            UC_Feedback("🏆 Generate Performance Scorecard")
+            UC_Chatbot("🤖 Conversational Career Assistant")
+        end
+
+        subgraph Admin_Usecases ["🛠️ Enterprise Governance"]
+            UC_Manage_Users("👥 Manage Users & Moderation")
+            UC_Broadcast("📢 Broadcast Notifications (SSE)")
+            UC_Logs("📝 Review Activity & Security Audit Logs")
+            UC_Health("🖥️ Monitor System Health & KPIs")
+            UC_Config("🔧 Manage System Configuration")
+        end
+    end
+
+    %% Connections
+    Candidate --> UC_Auth
+    Candidate --> UC_Profile
+    Candidate --> UC_Resume_Upload
+    Candidate --> UC_ATS_Score
+    Candidate --> UC_Resume_Opt
+    Candidate --> UC_Gen_Roadmap
+    Candidate --> UC_Track_Progress
+    Candidate --> UC_Recs
+    Candidate --> UC_Mock_Interview
+    Candidate --> UC_Feedback
+    Candidate --> UC_Chatbot
+
+    Admin --> UC_Auth
+    Admin --> UC_Manage_Users
+    Admin --> UC_Broadcast
+    Admin --> UC_Logs
+    Admin --> UC_Health
+    Admin --> UC_Config
+```
+
+### Actors and Use Cases Description
+
+* **Candidate (Job Seeker):** The primary user who interacts with the client application to manage their career development tasks.
+  * **Register & Login:** Enforces security boundaries and user session initialization (supporting standard credentials or Google OAuth authentication).
+  * **Analyze Resume & ATS Score:** Uploads resumes for parsing, scoring, and feedback generation, as well as optimizing resumes and generating matching cover letters.
+  * **Track Career Roadmap:** Visualizes dynamic skill milestones, logs learning activities, and tracks video progress.
+  * **Simulate Mock Interview:** Practices role-specific Q&A with real-time AI evaluation, scoring communication and correctness.
+  * **Explore Job & Course Openings:** Discovers matched job opportunities and learning resources based on profile data and skills.
+  * **Access AI Chatbot Support:** Obtains instant conversational assistance for platform use cases and career advice.
+* **System Administrator:** The platform operator who manages system governance and monitoring.
+  * **Manage Users:** Views, moderates, or deletes standard user profiles.
+  * **Broadcast Notifications:** Sends global alerts or target messages to users using Server-Sent Events (SSE).
+  * **Review Activity Audit Logs:** Tracks administrative actions, telemetry events, and system security logs.
+  * **Monitor System Health:** Observes real-time backend, database, and API operational KPIs.
+  * **Manage System Configuration:** Toggles maintenance mode, registration boundaries, and API credentials.
+
+## Class Diagram
+
+The Class Diagram illustrates the structural layout of the backend application, showing key database documents (models managed via MongoEngine) and controller views (Django REST Framework API View functions), including their attributes, methods, and relationships.
+
+![UML Class Diagram](class_diagram.png)
+
+### Mermaid Diagram
+
+```mermaid
+classDiagram
+    %% Core MongoEngine Database Documents
+    class User {
+        +ObjectId id
+        +String email
+        +String username
+        +String password_hash
+        +String name
+        +String role
+        +Boolean is_active
+        +Boolean is_pending_deletion
+        +DateTime deletion_requested_at
+        +DateTime created_at
+        +DateTime updated_at
+        +set_password(password)
+        +check_password(password)
+    }
+
+    class RefreshToken {
+        +ObjectId id
+        +ReferenceField user
+        +String token
+        +DateTime expires_at
+    }
+
+    class Profile {
+        +ObjectId id
+        +ReferenceField user
+        +String phone
+        +String target_role
+        +String location
+        +List skills
+        +String bio
+        +String github_url
+        +String linkedin_url
+        +String experience_level
+        +Dict auto_insights
+        +DateTime created_at
+    }
+
+    class ContactMessage {
+        +ObjectId id
+        +ReferenceField user
+        +String name
+        +String email
+        +String subject
+        +String message
+        +String status
+        +String priority
+        +String admin_notes
+        +List conversation
+        +DateTime created_at
+    }
+
+    class Resume {
+        +ObjectId id
+        +ReferenceField user
+        +String name
+        +String file_name
+        +String file_path
+        +String extracted_text
+        +Dict structured_data
+        +Int ats_score
+        +Dict analysis_report
+        +Int downloads_count
+        +Boolean is_primary
+        +DateTime created_at
+    }
+
+    class ResumeOptimization {
+        +ObjectId id
+        +ReferenceField user
+        +ReferenceField resume
+        +String target_role
+        +String optimized_text
+        +List ats_improvements
+        +List formatting_suggestions
+        +DateTime created_at
+    }
+
+    class CoverLetter {
+        +ObjectId id
+        +ReferenceField user
+        +ReferenceField resume
+        +String target_role
+        +String recipient_name
+        +String generated_text
+        +DateTime created_at
+    }
+
+    class InterviewSession {
+        +ObjectId id
+        +ReferenceField user
+        +String role
+        +String mode
+        +String status
+        +String difficulty
+        +String category
+        +List dialog
+        +Dict evaluation
+        +DateTime created_at
+    }
+
+    class Scorecard {
+        +ObjectId id
+        +ReferenceField user
+        +ReferenceField mock_test
+        +String domain
+        +String difficulty
+        +String category
+        +Int score
+        +Int total_questions
+        +Int correct_answers
+        +Int duration
+        +Dict performance_review
+        +List answers_submitted
+        +DateTime created_at
+    }
+
+    class Roadmap {
+        +ObjectId id
+        +ReferenceField user
+        +String target_role
+        +List milestones
+        +Boolean is_active
+        +Boolean is_system_generated
+        +String profile_state_hash
+        +Int schema_version
+        +DateTime created_at
+    }
+
+    class ChatSession {
+        +ObjectId id
+        +ReferenceField user
+        +List messages
+        +DateTime created_at
+    }
+
+    class Notification {
+        +ObjectId id
+        +ReferenceField user
+        +String message
+        +String type
+        +Boolean is_read
+        +DateTime created_at
+    }
+
+    class SystemConfig {
+        +ObjectId id
+        +Boolean enable_public_registration
+        +Boolean maintenance_mode
+        +String app_version
+        +get_settings()$
+    }
+
+    %% Django Views / API Controller Modules
+    class AuthController {
+        +register_view(request)
+        +login_view(request)
+        +google_oauth_view(request)
+        +logout_view(request)
+    }
+
+    class ResumeController {
+        +resume_upload_view(request)
+        +resume_list_view(request)
+        +resume_analyze_view(request)
+        +resume_optimize_view(request)
+        +cover_letter_generate_view(request)
+    }
+
+    class RoadmapController {
+        +roadmap_generate_view(request)
+        +roadmap_progress_view(request)
+        +recommend_jobs_and_courses_view(request)
+    }
+
+    class InterviewController {
+        +interview_session_create_view(request)
+        +interview_question_submit_view(request)
+        +interview_scorecard_view(request)
+    }
+
+    class ChatbotController {
+        +chatbot_message_view(request)
+        +chatbot_history_view(request)
+    }
+
+    class AdminController {
+        +admin_dashboard_stats_view(request)
+        +admin_user_management_view(request)
+        +admin_config_view(request)
+        +admin_notifications_view(request)
+    }
+
+    %% Relationships
+    User "1" <-- "1" Profile : User Profile
+    User "1" <-- "*" RefreshToken : Active Sessions
+    User "1" <-- "*" ContactMessage : Support Requests
+    User "1" <-- "*" Resume : Uploaded Resumes
+    User "1" <-- "*" ResumeOptimization : Optimizations
+    User "1" <-- "*" CoverLetter : Cover Letters
+    User "1" <-- "*" InterviewSession : Practice Sessions
+    InterviewSession "1" <-- "1" Scorecard : Final Assessment
+    User "1" <-- "*" Roadmap : Career Roadmaps
+    User "1" <-- "*" ChatSession : Bot Conversations
+    User "1" <-- "*" Notification : System Messages
+
+    AuthController ..> User : Creates/Reads
+    ResumeController ..> Resume : Manages
+    RoadmapController ..> Roadmap : Manages
+    InterviewController ..> InterviewSession : Coordinates
+    ChatbotController ..> ChatSession : Logs
+    AdminController ..> SystemConfig : Reads/Writes
+```
+
+### Description of Core Classes
+
+* **User (Database Model):** Represents registered credentials or Google OAuth users. Stores the email, username, password_hash, name, and application role (standard vs admin).
+* **Profile (Database Model):** Contains extended user profile details, target roles, geographic location, experience level, biographical fields, auto-insights hash, and skills list. Cascade deletes on User removal.
+* **Resume (Database Model):** Holds the extracted text content, parsed structured form builder fields, ATS compatibility scores, and the detailed Gemini analysis report.
+* **ResumeOptimization (Database Model):** Retains history of customized resume optimizations requested by the user, tracking improved texts and style suggestion lists.
+* **CoverLetter (Database Model):** Stores AI-generated role-specific cover letter drafts.
+* **Roadmap (Database Model):** Contains the personalized step-by-step career development milestones, resources, references, and completed state indicators.
+* **InterviewSession (Database Model):** Tracks the adaptive mock interview QA dialog array, role, status, difficulty level, and conversational mode (text or voice).
+* **Scorecard (Database Model):** Chronologically records mock test parameters, scoring results, duration, and submitted answers metadata for analytics.
+* **SystemConfig (Database Model):** Administrative model specifying application-wide settings such as public registration status and maintenance mode parameters.
+* **API Controller Modules:** Refers to function-based views decorated with DRF `@api_view` annotations that implement request authorization, file parsers, Gemini inference calls, database reads/writes, and SSE streaming.
+
+## Sequence Diagram
+
+The Sequence Diagram details the chronological flow of messages and control transitions among active system components during the core **Resume Upload and Analysis** workflow.
+
+![UML Sequence Diagram](sequence_diagram.png)
+
+### Workflow Steps
+
+1. **Upload Request:** The Candidate submits a resume file via the React client.
+2. **API Forwarding:** The React SPA forwards the multipart stream via an Axios POST request to the Django Backend.
+3. **Text Extraction:** The Django Backend invokes the PyMuPDF Parser to extract the raw text content.
+4. **Text Return:** The PyMuPDF Parser returns the raw text string to the backend.
+5. **AI Inference:** The Backend packages the text with prompt criteria and sends an evaluation request to the Google Gemini AI API.
+6. **Report Delivery:** The Gemini AI API parses the text semantically and returns the structured ATS Report JSON.
+7. **Persistence:** The Django Backend saves the resume document and the AI report in MongoDB.
+8. **Response Return:** The Backend sends a 201 Created JSON response to the React SPA, which updates the UI for the candidate.
+
+## Activity Diagram
+
+The Activity Diagram illustrates the operational logic and flow of decisions during an **Interactive Mock Interview Preparation** session.
+
+![UML Activity Diagram](activity_diagram.png)
+
+### Mermaid Diagram
+
+```mermaid
+flowchart TD
+    Start([🏁 Start Interview Session]) --> AuthCheck{Is User Authenticated?}
+    
+    AuthCheck -- No --> RedirectLogin[Redirect to Login Page] --> Start
+    AuthCheck -- Yes --> RenderSetup[Display Setup Page: Role, Difficulty, Qs Count]
+    
+    RenderSetup --> InputParams[Candidate Selects Parameters & Clicks Start]
+    InputParams --> ReqBackend[React Sends POST /api/assessments/session/]
+    
+    ReqBackend --> APICheck{Gemini API Online?}
+    
+    APICheck -- Yes --> GeminiGen[Gemini Generates Custom Dynamic Questions]
+    APICheck -- No --> DBFallback[Fallback: Retrieve Cached static Qs from MongoDB]
+    
+    GeminiGen --> SaveSession[Backend Creates InterviewSession in MongoDB]
+    DBFallback --> SaveSession
+    
+    SaveSession --> SendSessionToClient[Backend Returns Session ID & Questions]
+    SendSessionToClient --> InitLoop[Set Question Index = 1]
+    
+    InitLoop --> DisplayQ[React Renders Question UI]
+    DisplayQ --> AnswerInput[Candidate Enters Answer or Skips]
+    AnswerInput --> SubmitAnswer[Axios POST /api/assessments/session/submit_answer/]
+    
+    SubmitAnswer --> BackendLog[Backend Logs Answer in Database]
+    BackendLog --> EvalCheck{Gemini API Online for Eval?}
+    
+    EvalCheck -- Yes --> GeminiEval[Gemini Computes Immediate Feedback & Score]
+    EvalCheck -- No --> RuleEval[Backend Computes Basic Rule-based Fallback Score]
+    
+    GeminiEval --> SaveProgress[Update InterviewSession Answers & Scores]
+    RuleEval --> SaveProgress
+    
+    SaveProgress --> IncrementIdx[Increment Question Index]
+    IncrementIdx --> CheckRemaining{Index <= Total Questions?}
+    
+    CheckRemaining -- Yes --> DisplayQ
+    
+    CheckRemaining -- No --> CompleteSession[POST /api/assessments/session/complete/]
+    CompleteSession --> GenerateScorecard[Compile Final Scorecard with Metrics]
+    GenerateScorecard --> SaveScorecard[Save Scorecard Document in MongoDB]
+    SaveScorecard --> RenderScorecard[React Renders Scorecard Dashboard]
+    
+    RenderScorecard --> UserChoice{Candidate Action?}
+    UserChoice -- Retake --> RenderSetup
+    UserChoice -- Download PDF --> PDFGen[Backend Generates PDF Report] --> UserChoice
+    UserChoice -- Exit --> End([🏁 End Session])
+```
+
+### Process Execution Steps
+
+1. **Authentication Check:** The system verifies the candidate's login session before allowing session setup. Unauthenticated requests redirect to the login gateway.
+2. **Parameters Selection:** The candidate specifies their target role, difficulty level (Easy, Medium, Hard), and desired question count on the setup screen.
+3. **API Readiness Check & Fallback:** The backend attempts to generate custom questions dynamically via the Gemini API. If the API is offline or rate-limited, the system transparently falls back to retrieving pre-configured static mock interview questions cached in MongoDB, ensuring platform reliability.
+4. **Session Instantiation:** The backend creates an `InterviewSession` document in MongoDB containing the session settings and questions array, returning the session identifier to the frontend client.
+5. **Interactive Question Loop:** The React frontend loops through the generated questions:
+   - It renders the current question to the screen.
+   - The user writes their natural language response (or chooses to skip/hint).
+   - Upon answer submission, the response is posted to the backend.
+   - The system evaluates the answer. If Gemini is online, it dynamically grades the response for communication clarity and technical accuracy; if Gemini is unreachable, it logs a basic rule-based placeholder score, ensuring session continuity.
+6. **Session Termination & Scorecard Generation:** When the last question is completed, the frontend triggers a session completion request. The backend compiles overall scorecard metrics (averages, feedback summaries), saves the final `Scorecard` record to MongoDB, and displays the comprehensive results dashboard.
+7. **Post-Interview Options:** From the scorecard dashboard, candidates can download a generated PDF certificate/report of their performance, choose to retake the interview to practice again, or exit the session.
 
 ## System Design
 
